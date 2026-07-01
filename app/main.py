@@ -105,7 +105,10 @@ async def voice_ws(websocket: WebSocket):
 
 def _parse_gm_response(raw: str, state: dict) -> tuple[str, dict]:
     json_match = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
-    narrative = re.sub(r"```json.*?```", "", raw, flags=re.DOTALL).strip()
+    # Usuń blok JSON z narracji; usuń też ewentualny surowy JSON na końcu
+    narrative = re.sub(r"```json.*?```", "", raw, flags=re.DOTALL)
+    narrative = re.sub(r"\{[^{}]*\"new_location\"[^{}]*\}", "", narrative)
+    narrative = narrative.strip()
 
     if json_match:
         try:
@@ -120,6 +123,13 @@ def _parse_gm_response(raw: str, state: dict) -> tuple[str, dict]:
             state["flags"].update(updates.get("flags_update", {}))
         except json.JSONDecodeError:
             pass
+
+    # Zabezpieczenie: jeśli narracja wskazuje na pokonanie trolla ale flaga nie została zaktualizowana
+    troll_keywords = ["ustępuje", "chowa się", "ucieka", "nie chcę kłopotów", "droga wolna", "przekupiony", "zasnął"]
+    if (state["current_location"] == "most"
+            and state["flags"].get("troll_state") == "blokuje_most"
+            and any(kw in narrative.lower() for kw in troll_keywords)):
+        state["flags"]["troll_state"] = "troll_pokonany"
 
     state["turn"] += 1
     state["history"].append({"turn": state["turn"], "gm": narrative})

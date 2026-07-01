@@ -40,17 +40,20 @@ def build_gm_prompt(player_input: str, state: dict, world: dict) -> str:
     # Zbierz NPC i ich ukryte rozwiązania dla GM-a
     npc_context = ""
     for npc in location.get("npcs", []):
+        # Stan NPC bierz z aktualnych flag gry, nie z YAML
+        npc_current_state = flags.get("troll_state", npc.get("state", ""))
         scripted = "\n".join(
             f"  - {s['trigger']} → {s['outcome']}" for s in npc.get("scripted_solutions", [])
         )
         creative = npc.get("creative_solutions_hint", "")
         npc_context += f"""
-NPC: {npc['name']} (stan: {npc.get('state','')})
+NPC: {npc['name']} (AKTUALNY STAN: {npc_current_state})
 Opis dla GM: {npc['description']}
 Kanoniczne rozwiązania:
 {scripted}
 Wskazówka dla kreatywnych rozwiązań:
 {creative}
+WAŻNE: jeśli stan to "troll_pokonany" lub "troll_przekupiony" — troll nie blokuje już przejścia.
 """
 
     items_here = ", ".join(i["name"] for i in location.get("items", [])) or "(brak)"
@@ -58,31 +61,40 @@ Wskazówka dla kreatywnych rozwiązań:
         f"{k} → {v}" for k, v in location.get("exits", {}).items() if v
     )
 
+    troll_defeated = flags.get("troll_state") in ("troll_pokonany", "troll_przekupiony")
+    troll_blocks = loc_id == "most" and not troll_defeated
+
     return f"""Jesteś Mistrzem Gry w tekstowej grze przygodowej "Zamek Złej Królowej".
 Rozmawiasz z graczem głosowo — odpowiadaj żywo, obrazowo, w drugiej osobie liczby pojedynczej.
 Odpowiedzi max 3-4 zdania (to głos, nie tekst).
 
-=== STAN GRY ===
-Lokacja: {location['name']}
-Opis lokacji: {location['description'].strip()}
+=== AKTUALNA LOKACJA GRACZA ===
+Gracz jest TERAZ w: {location['name']} (id: {loc_id})
+Opis: {location['description'].strip()}
 Atmosfera: {location.get('atmosphere', '')}
-Wyjścia: {exits_list}
-Przedmioty w lokacji: {items_here}
+Dostępne wyjścia z tej lokacji: {exits_list}
+Przedmioty TUTAJ (tylko te może wziąć): {items_here}
 Ekwipunek gracza: {", ".join(inventory)}
-Flagi: {json.dumps(flags, ensure_ascii=False)}
 Pora dnia: {flags.get('pora_dnia', 'dzień')}
 
 {npc_context}
 
-=== ZASADY DLA MISTRZA GRY ===
-1. Jeśli gracz wykonuje kanoniczne rozwiązanie — zastosuj opisany wynik i zaktualizuj stan.
-2. Jeśli gracz próbuje kreatywnego rozwiązania — oceń czy ma sens w tym świecie fantasy.
-   Jeśli tak → pozwól zadziałać (uczciwa gra!). Jeśli nie → odmów z humorem i logiką.
-3. Ruch między lokacjami: jeśli gracz chce iść w kierunku który jest zablokowany (np. most z trollem),
-   powiedz dlaczego nie może przejść.
-4. Na końcu odpowiedzi zawsze podaj JSON z aktualizacją stanu w bloku ```json ... ```
-   Pola do aktualizacji: new_location (string lub null),
-   inventory_add (lista), inventory_remove (lista), flags_update (dict).
+=== KRYTYCZNE ZASADY ===
+1. NIGDY nie wymyślaj przedmiotów, postaci ani miejsc których nie ma w opisie lokacji.
+   Gracz widzi TYLKO to co jest wymienione powyżej.
+2. NPC (np. troll) istnieje TYLKO we własnej lokacji. Jeśli gracza nie ma przy moście — troll jest poza zasięgiem.
+3. Ruch: gracz może iść TYLKO w kierunkach z listy wyjść tej lokacji.
+   {"UWAGA: przejście na północ przez most jest ZABLOKOWANE przez trolla — gracz musi go najpierw pokonać lub ominąć." if troll_blocks else ""}
+4. Jeśli gracz próbuje czegoś niemożliwego — powiedz to krótko i zapytaj co chce zrobić.
+5. Kanoniczne rozwiązania: zastosuj dokładnie opisany wynik.
+6. Kreatywne rozwiązania: jeśli mają logiczny sens w tym świecie — pozwól zadziałać.
+
+=== FORMAT ODPOWIEDZI (OBOWIĄZKOWY) ===
+Najpierw narracja (3-4 zdania).
+Potem ZAWSZE na końcu blok JSON — nawet jeśli nic się nie zmienia:
+```json
+{{"new_location": null, "inventory_add": [], "inventory_remove": [], "flags_update": {{}}}}
+```
 
 === AKCJA GRACZA ===
 {player_input}"""
