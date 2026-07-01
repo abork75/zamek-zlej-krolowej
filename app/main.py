@@ -4,12 +4,13 @@ import re
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 
 from app.game_engine import load_world, load_state, save_state, reset_state, build_gm_prompt
-from app.config import XAI_API_KEY, GROK_MODEL, GROK_VOICE
+from app.config import XAI_API_KEY, GROK_MODEL, GROK_VOICE, IMAGE_STYLES
+from app.image_service import generate_image, image_path, resolve_variant, build_image_log
 
 app = FastAPI()
 
@@ -20,6 +21,46 @@ app.mount("/static", StaticFiles(directory=str(FRONTEND)), name="static")
 @app.get("/")
 def index():
     return FileResponse(str(FRONTEND / "index.html"))
+
+
+@app.get("/api/location-image/{loc_id}")
+async def location_image(loc_id: str, force: bool = False):
+    world = load_world()
+    state = load_state()
+    if loc_id not in world["locations"]:
+        return JSONResponse({"error": "unknown location"}, status_code=404)
+
+    location = world["locations"][loc_id]
+    file_id, label = resolve_variant(loc_id, location, state["flags"])
+    path = image_path(file_id)
+
+    if not path.exists() or force:
+        variants = location.get("image_variants", [])
+        prompt_extra = next(
+            (v["prompt_extra"] for v in variants if v["file"] == file_id),
+            location.get("atmosphere", loc_id)
+        )
+        ok = await generate_image(file_id, location, prompt_extra, force=force)
+        if not ok:
+            return JSONResponse({"error": "generation failed"}, status_code=503)
+
+    return FileResponse(str(path), media_type="image/png")
+
+
+@app.get("/api/debug/images")
+def debug_images():
+    world = load_world()
+    state = load_state()
+    result = []
+    for loc_id, location in world["locations"].items():
+        log = build_image_log(loc_id, location, state["flags"])
+        result.append({"loc_id": loc_id, "loc_name": location["name"], "variants": log})
+    return result
+
+
+@app.get("/api/image-styles")
+def image_styles():
+    return IMAGE_STYLES
 
 
 @app.get("/debug")
@@ -65,11 +106,22 @@ def debug_graph():
     }
 
 
+def enrich_state(state: dict, world: dict) -> dict:
+    """Dodaje do stanu pola z world.yaml potrzebne frontendowi."""
+    loc_id = state["current_location"]
+    loc = world["locations"].get(loc_id, {})
+    state["current_location_name"] = loc.get("name", loc_id)
+    state["atmosphere"] = loc.get("atmosphere", "")
+    file_id, _ = resolve_variant(loc_id, loc, state["flags"])
+    state["active_image"] = file_id
+    return state
+
+
 @app.post("/api/reset")
 def reset():
     state = reset_state()
     world = load_world()
-    return {"state": state, "intro": world["intro"]}
+    return {"state": enrich_state(state, world), "intro": world["intro"]}
 
 
 @app.post("/api/chat")
@@ -92,7 +144,7 @@ async def chat(body: dict):
     narrative, updated_state = _parse_gm_response(gm_response, state)
     save_state(updated_state)
 
-    return {"narrative": narrative, "state": updated_state}
+    return {"narrative": narrative, "state": enrich_state(updated_state, world)}
 
 
 @app.websocket("/ws/voice")

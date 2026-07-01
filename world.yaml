@@ -7,6 +7,11 @@ intro: |
 locations:
   las:
     name: "Mroczny Las"
+    image_variants:
+      - file: "las"
+        condition: null
+        label: "Mroczny las (domyślny)"
+        prompt_extra: "gęsty mroczny las, stare dęby, blade światło przez korony, mgła przy ziemi"
     description: |
       Jesteś w gęstym, mrocznym lesie. Stare dęby zasłaniają niebo, przez ich korony
       przebijają się jedynie blade promienie światła. Między korzeniami walają się
@@ -34,6 +39,11 @@ locations:
 
   polana:
     name: "Słoneczna Polana"
+    image_variants:
+      - file: "polana"
+        condition: null
+        label: "Słoneczna polana (domyślna)"
+        prompt_extra: "słoneczna polana, wysoka trawa, omszały głaz pośrodku, jasne światło, spokojny klimat"
     description: |
       Wychodząc z lasu trafiasz na małą, słoneczną polanę. Trawa jest tu wysoka,
       a pośrodku sterczy stary, omszały głaz. Przy głazie leży coś błyszczącego.
@@ -56,6 +66,15 @@ locations:
 
   most:
     name: "Most nad Rzeką Mgieł"
+    image_variants:
+      - file: "most_troll"
+        condition: {flag: "troll_state", value: "blokuje_most"}
+        label: "Troll blokuje most"
+        prompt_extra: "zbliżenie na ogromnego szarego trolla, kamienna skóra, złośliwe małe oczy, rozmyty kamienny most i czarna rzeka w tle, dramatyczne oświetlenie"
+      - file: "most"
+        condition: null
+        label: "Most spokojny (domyślny)"
+        prompt_extra: "stary kamienny most nad czarną rzeką mgieł, brak postaci, mroczna atmosfera, mgła unosi się nad wodą"
     description: |
       Stoisz przed starym kamiennym mostem przerzuconym nad głęboką, mroczną rzeką.
       Woda jest czarna i spokojna — nie widać dna. Most wygląda solidnie, ale na
@@ -104,6 +123,19 @@ locations:
 
   zamek:
     name: "Brama Zamku Złej Królowej"
+    image_variants:
+      - file: "zamek_otwarta"
+        condition: {flag: "brama_state", value: "otwarta"}
+        label: "Brama otwarta"
+        prompt_extra: "potężna czarna brama zamku uchylona, fioletowe światło gaśnie, mroczne mury, gargulce na wieżyczkach"
+      - file: "zamek_wiezien"
+        condition: {flag: "wiezien_state", value: "uwolniony"}
+        label: "Brama z pustą klatką"
+        prompt_extra: "potężna czarna brama zamku, fioletowy magiczny symbol pulsuje, pusta otwarta klatka przy murze"
+      - file: "zamek"
+        condition: null
+        label: "Brama zamknięta z więźniem (domyślna)"
+        prompt_extra: "potężna czarna brama zamku, fioletowy magiczny symbol pulsuje, żelazna klatka z więźniem przy murze, mroczne mury, gargulce"
     description: |
       Stoisz przed potężną bramą zamku. Czarne mury wznoszą się wysoko w niebo,
       a z wieżyczek obserwują cię nieruchome gargulce. Brama jest zamknięta —
@@ -172,6 +204,11 @@ locations:
 
   domek_pustelnika:
     name: "Domek Pustelnika Hieronima"
+    image_variants:
+      - file: "domek_pustelnika"
+        condition: null
+        label: "Chatka pustelnika (domyślna)"
+        prompt_extra: "mała drewniana chatka w lesie, dach pokryty mchem, rzędy ziół w glinianych donicach przy wejściu, ciepłe światło z okna"
     description: |
       Ukryta ścieżka prowadzi cię przez gęsty las do małej, drewnianej chatki.
       Dach pokryty jest mchem, a przy wejściu rosną rzędy ziół w glinianych donicach.

@@ -37,6 +37,11 @@ def build_gm_prompt(player_input: str, state: dict, world: dict) -> str:
     inventory = state["inventory"] if state["inventory"] else ["(brak)"]
     flags = state["flags"]
 
+    troll_defeated = flags.get("troll_state") in ("troll_pokonany", "troll_przekupiony")
+    troll_blocks = loc_id == "most" and not troll_defeated
+    hidden_path = flags.get("hidden_path_unlocked", False)
+    brama_open = flags.get("brama_state") == "otwarta"
+
     # Zbierz NPC i ich ukryte rozwiązania dla GM-a
     npc_context = ""
     for npc in location.get("npcs", []):
@@ -74,11 +79,6 @@ WAŻNE: jeśli stan to "troll_pokonany" lub "troll_przekupiony" — troll nie bl
         description = location.get("description_with_path", location["description"])
     else:
         description = location["description"]
-
-    troll_defeated = flags.get("troll_state") in ("troll_pokonany", "troll_przekupiony")
-    troll_blocks = loc_id == "most" and not troll_defeated
-    hidden_path = flags.get("hidden_path_unlocked", False)
-    brama_open = flags.get("brama_state") == "otwarta"
 
     return f"""Jesteś Mistrzem Gry w tekstowej grze przygodowej "Zamek Złej Królowej".
 Rozmawiasz z graczem głosowo — odpowiadaj żywo, obrazowo, w drugiej osobie liczby pojedynczej.

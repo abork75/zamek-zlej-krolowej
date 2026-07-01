@@ -13,15 +13,61 @@ function addMessage(text, type = 'gm') {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
+const imgEl          = document.getElementById('location-image');
+const imgPlaceholder = document.getElementById('location-image-placeholder');
+const imgLoading     = document.getElementById('image-loading');
+const atmosphereEl   = document.getElementById('location-atmosphere');
+const inventoryList  = document.getElementById('inventory-list');
+
+const ITEM_ICONS = {
+  'stary kij':          '🪵',
+  'zardzewiały miecz':  '⚔️',
+  'sakiewka ze złotem': '💰',
+  'zioła lecznicze':    '🌿',
+};
+
+let currentLocation = null;
+
 function updateStatus(state) {
   if (!state) return;
-  const loc = {
-    las: 'Mroczny Las', polana: 'Słoneczna Polana',
-    most: 'Most nad Rzeką Mgieł', zamek: 'Brama Zamku'
+  locationEl.textContent = state.current_location_name || state.current_location;
+
+  // Ekwipunek
+  if (state.inventory.length) {
+    inventoryList.innerHTML = state.inventory.map(item => `
+      <div class="inv-item">
+        <span class="inv-item-icon">${ITEM_ICONS[item] || '📦'}</span>
+        <span>${item}</span>
+      </div>`).join('');
+  } else {
+    inventoryList.innerHTML = '<div class="inv-empty">(pusty)</div>';
+  }
+
+  // Obrazek — tylko gdy zmieniono lokację
+  if (state.current_location !== currentLocation) {
+    currentLocation = state.current_location;
+    loadLocationImage(state.current_location, state.atmosphere);
+  }
+}
+
+function loadLocationImage(locId, atmosphere) {
+  if (atmosphere) atmosphereEl.textContent = atmosphere;
+
+  imgEl.style.display = 'none';
+  imgPlaceholder.style.display = 'none';
+  imgLoading.style.display = 'flex';
+
+  const img = new Image();
+  img.onload = () => {
+    imgLoading.style.display = 'none';
+    imgEl.src = img.src;
+    imgEl.style.display = 'block';
   };
-  locationEl.textContent = loc[state.current_location] || state.current_location;
-  const inv = state.inventory.length ? state.inventory.join(', ') : '(pusty)';
-  inventoryEl.textContent = `Ekwipunek: ${inv}`;
+  img.onerror = () => {
+    imgLoading.style.display = 'none';
+    imgPlaceholder.style.display = 'flex';
+  };
+  img.src = `/api/location-image/${locId}?t=${Date.now()}`;
 }
 
 async function sendMessage(text) {

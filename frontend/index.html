@@ -7,29 +7,60 @@
 </head>
 <body>
   <div id="game">
+
     <header>
       <h1>🏰 Zamek Złej Królowej</h1>
       <div id="status-bar">
         <span id="location-name">Mroczny Las</span>
-        <span id="inventory-display">Ekwipunek: (pusty)</span>
       </div>
     </header>
 
-    <div id="narrative-box">
-      <div id="messages"></div>
+    <div id="main">
+
+      <!-- LEWA KOLUMNA: narracja + kontrolki -->
+      <div id="left-col">
+        <div id="narrative-box">
+          <div id="messages"></div>
+        </div>
+        <div id="controls">
+          <div id="text-input-area">
+            <input type="text" id="text-input" placeholder="Co robisz? (wpisz lub mów...)" autocomplete="off">
+            <button id="send-btn">Wyślij</button>
+          </div>
+          <div id="voice-area">
+            <button id="voice-btn" class="voice-idle">🎤 Mów</button>
+            <span id="voice-status">Kliknij żeby mówić</span>
+            <button id="reset-btn">🔄 Nowa gra</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRAWA KOLUMNA: obrazek + ekwipunek -->
+      <div id="right-col">
+
+        <div id="location-image-box">
+          <div id="location-image-placeholder">
+            <span class="placeholder-icon">🏰</span>
+            <span class="placeholder-label">Ilustracja lokacji</span>
+          </div>
+          <img id="location-image" src="" alt="" style="display:none">
+          <div id="image-loading" style="display:none">
+            <span class="placeholder-icon" style="animation: pulse 1.5s infinite">⚙</span>
+            <span class="placeholder-label">Generuję obrazek...</span>
+          </div>
+        </div>
+        <div id="location-atmosphere"></div>
+
+        <div id="inventory-box">
+          <div id="inventory-header">Ekwipunek</div>
+          <div id="inventory-list">
+            <div class="inv-empty">(pusty)</div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
-    <div id="controls">
-      <div id="text-input-area">
-        <input type="text" id="text-input" placeholder="Co robisz? (wpisz lub mów...)" autocomplete="off">
-        <button id="send-btn">Wyślij</button>
-      </div>
-      <div id="voice-area">
-        <button id="voice-btn" class="voice-idle">🎤 Mów</button>
-        <span id="voice-status">Kliknij żeby mówić</span>
-      </div>
-      <button id="reset-btn">🔄 Nowa gra</button>
-    </div>
   </div>
 
   <script src="/static/js/game.js"></script>

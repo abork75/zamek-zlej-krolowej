@@ -5,89 +5,139 @@
   <title>DEBUG — Zamek Złej Królowej</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0a0a0a; color: #c8b89a; font-family: 'Courier New', monospace; padding: 20px; }
-    h1 { color: #d4a843; font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; }
+    body { background: #0a0a0a; color: #c8b89a; font-family: 'Courier New', monospace; padding: 16px; overflow: hidden; }
+    h1 { color: #d4a843; font-size: 0.9rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; }
 
-    #layout { display: flex; gap: 20px; height: calc(100vh - 60px); }
+    #layout { display: flex; gap: 14px; height: calc(100vh - 52px); }
 
+    /* KOLUMNA 1: graf */
     #graph-panel {
       flex: 1;
       border: 1px solid #3a2e1e;
       border-radius: 4px;
       background: #0d0900;
-      position: relative;
       overflow: hidden;
     }
-
     #graph-canvas { width: 100%; height: 100%; }
 
+    /* KOLUMNA 2: stan gry */
     #info-panel {
-      width: 280px;
+      width: 220px;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    /* KOLUMNA 3: warianty obrazków + log */
+    #image-panel {
+      width: 380px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
     }
 
     .panel-box {
       border: 1px solid #3a2e1e;
       border-radius: 4px;
       background: #0d0900;
-      padding: 14px;
+      padding: 12px;
+      flex-shrink: 0;
     }
+    .panel-box.scrollable { overflow-y: auto; flex: 1; flex-shrink: 1; }
+    .panel-box h2 { color: #d4a843; font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 8px; text-transform: uppercase; }
 
-    .panel-box h2 { color: #d4a843; font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase; }
+    .location-badge { background: #2a1800; border: 1px solid #d4a843; color: #d4a843; padding: 5px 8px; border-radius: 2px; font-size: 0.85rem; margin-bottom: 6px; }
 
-    .location-badge {
-      background: #2a1800;
-      border: 1px solid #d4a843;
-      color: #d4a843;
-      padding: 6px 10px;
-      border-radius: 2px;
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-    }
-
-    .flag-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      padding: 3px 0;
-      border-bottom: 1px solid #1a1200;
-    }
+    .flag-row { display: flex; justify-content: space-between; font-size: 0.72rem; padding: 3px 0; border-bottom: 1px solid #1a1200; }
     .flag-key { color: #7a6a50; }
     .flag-val { color: #a0c080; }
+    .inv-item { font-size: 0.75rem; color: #a08040; padding: 2px 0; }
 
-    .inv-item { font-size: 0.8rem; color: #a08040; padding: 2px 0; }
+    /* Tabela wariantów */
+    .loc-section { margin-bottom: 14px; }
+    .loc-title { font-size: 0.7rem; color: #d4a843; margin-bottom: 4px; letter-spacing: 1px; }
 
-    #refresh-info { font-size: 0.65rem; color: #3a2e1e; margin-top: 6px; }
+    .variant-row {
+      display: grid;
+      grid-template-columns: 16px 1fr auto;
+      gap: 6px;
+      align-items: start;
+      padding: 5px 6px;
+      border-radius: 2px;
+      margin-bottom: 3px;
+      font-size: 0.7rem;
+      border: 1px solid transparent;
+    }
+    .variant-row.active   { background: #1a1200; border-color: #5a3a10; }
+    .variant-row.inactive { opacity: 0.45; }
 
-    .legend { display: flex; flex-direction: column; gap: 6px; font-size: 0.75rem; }
-    .legend-row { display: flex; align-items: center; gap: 8px; }
-    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .variant-check { color: #d4a843; font-size: 0.8rem; }
+    .variant-info  { display: flex; flex-direction: column; gap: 2px; }
+    .variant-file  { color: #c8a050; }
+    .variant-label { color: #7a6a50; font-size: 0.65rem; }
+    .variant-reason { color: #5a8a5a; font-size: 0.65rem; font-style: italic; }
+    .variant-reason.miss { color: #6a3a3a; }
+
+    .regen-btn {
+      background: #1a0800;
+      border: 1px solid #4a2a00;
+      color: #8a6a30;
+      padding: 2px 6px;
+      font-size: 0.6rem;
+      cursor: pointer;
+      border-radius: 2px;
+      font-family: 'Courier New', monospace;
+      white-space: nowrap;
+    }
+    .regen-btn:hover { background: #2a1400; color: #d4a843; border-color: #8a4a00; }
+    .regen-btn.loading { opacity: 0.5; pointer-events: none; }
+    .cached-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+    .cached-yes { background: #4a8a4a; }
+    .cached-no  { background: #8a3a3a; }
+
+    /* Log */
+    #event-log { font-size: 0.68rem; line-height: 1.6; }
+    .log-entry { padding: 4px 0; border-bottom: 1px solid #1a1200; }
+    .log-turn  { color: #d4a843; }
+    .log-flag  { color: #a0c080; }
+    .log-img   { color: #6a9a9a; }
+    .log-text  { color: #7a6a50; }
+
+    #refresh-info { font-size: 0.6rem; color: #2a2010; }
+
+    .legend { display: flex; flex-direction: column; gap: 4px; font-size: 0.7rem; }
+    .legend-row { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dot-current { background: #d4a843; }
-    .dot-normal { background: #3a2e1e; border: 1px solid #7a6a50; }
-    .line-open { width: 24px; height: 2px; background: #4a8a4a; }
-    .line-closed { width: 24px; height: 2px; background: #8a2020; border-top: 2px dashed #8a2020; height: 0; }
+    .dot-normal  { background: #3a2e1e; border: 1px solid #7a6a50; }
   </style>
 </head>
 <body>
-<h1>🗺 Debug — Mapa Świata</h1>
+<h1>🗺 Debug — Zamek Złej Królowej</h1>
 <div id="layout">
+
+  <!-- KOLUMNA 1: Graf -->
   <div id="graph-panel">
     <canvas id="graph-canvas"></canvas>
   </div>
+
+  <!-- KOLUMNA 2: Stan gry -->
   <div id="info-panel">
     <div class="panel-box">
       <h2>Lokacja gracza</h2>
       <div class="location-badge" id="current-loc">—</div>
-      <div id="turn-info" style="font-size:0.7rem;color:#5a4a30"></div>
+      <div id="turn-info" style="font-size:0.65rem;color:#5a4a30"></div>
     </div>
     <div class="panel-box">
       <h2>Ekwipunek</h2>
       <div id="inventory"></div>
     </div>
     <div class="panel-box">
-      <h2>Flagi stanu gry</h2>
+      <h2>Flagi</h2>
       <div id="flags"></div>
     </div>
     <div class="panel-box">
@@ -95,38 +145,73 @@
       <div class="legend">
         <div class="legend-row"><div class="dot dot-current"></div> Gracz tu jest</div>
         <div class="legend-row"><div class="dot dot-normal"></div> Lokacja</div>
-        <div class="legend-row"><div class="line-open"></div> Przejście otwarte (1)</div>
-        <div class="legend-row"><div style="width:24px;height:0;border-top:2px dashed #8a2020"></div> Zablokowane (0)</div>
+        <div class="legend-row"><div style="width:20px;height:2px;background:#4a8a4a"></div> Otwarte [1]</div>
+        <div class="legend-row"><div style="width:20px;height:0;border-top:2px dashed #8a2020"></div> Zablokowane [0]</div>
       </div>
     </div>
-    <div id="refresh-info">Auto-odświeżanie co 2s</div>
+    <div id="refresh-info">Auto-odświeżanie co 2s • Klawisz 0 = reset zoom</div>
   </div>
+
+  <!-- KOLUMNA 3: Warianty obrazków + Log -->
+  <div id="image-panel">
+    <div class="panel-box scrollable">
+      <h2>Warianty obrazków</h2>
+      <div id="variants-table"></div>
+    </div>
+    <div class="panel-box scrollable">
+      <h2>Log zdarzeń</h2>
+      <div id="event-log"><span style="color:#3a2e1e">Brak zdarzeń</span></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-// Pozycje węzłów (x%, y% canvas)
 const NODE_POS = {
-  las:              { x: 0.45, y: 0.50 },
-  polana:           { x: 0.75, y: 0.50 },
-  most:             { x: 0.45, y: 0.25 },
-  zamek:            { x: 0.45, y: 0.05 },
-  domek_pustelnika: { x: 0.10, y: 0.50 },
-  wnetrze_zamku:    { x: 0.45, y: -0.12 }, // poza ekranem gdy zamknięte
+  las:              { x: 0.45, y: 0.55 },
+  polana:           { x: 0.62, y: 0.55 },
+  most:             { x: 0.45, y: 0.30 },
+  zamek:            { x: 0.45, y: 0.08 },
+  domek_pustelnika: { x: 0.28, y: 0.55 },
+  wnetrze_zamku:    { x: 0.45, y: -0.12 },
 };
 
+// ── GRAF ──────────────────────────────────────────
 const canvas = document.getElementById('graph-canvas');
 const ctx = canvas.getContext('2d');
+let scale = 1, panX = 0, panY = 0, isPanning = false, lastMX = 0, lastMY = 0, lastData = null;
 
-function resize() {
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
-}
-window.addEventListener('resize', resize);
+function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+window.addEventListener('resize', () => { resize(); if (lastData) draw(lastData); });
 resize();
 
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const delta = e.deltaY < 0 ? 1.12 : 1/1.12;
+  panX = mx - (mx - panX) * delta; panY = my - (my - panY) * delta;
+  scale = Math.max(0.3, Math.min(4, scale * delta));
+  if (lastData) draw(lastData);
+}, { passive: false });
+
+canvas.addEventListener('mousedown', e => { isPanning = true; lastMX = e.clientX; lastMY = e.clientY; canvas.style.cursor = 'grabbing'; });
+canvas.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  panX += e.clientX - lastMX; panY += e.clientY - lastMY;
+  lastMX = e.clientX; lastMY = e.clientY;
+  if (lastData) draw(lastData);
+});
+canvas.addEventListener('mouseup',    () => { isPanning = false; canvas.style.cursor = 'grab'; });
+canvas.addEventListener('mouseleave', () => { isPanning = false; canvas.style.cursor = 'grab'; });
+canvas.style.cursor = 'grab';
+document.addEventListener('keydown', e => { if (e.key === '0') { scale=1; panX=0; panY=0; if (lastData) draw(lastData); } });
+
 function draw(data) {
+  lastData = data;
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
+  ctx.save(); ctx.translate(panX, panY); ctx.scale(scale, scale);
 
   const pos = {};
   data.nodes.forEach(n => {
@@ -134,104 +219,141 @@ function draw(data) {
     pos[n.id] = { x: p.x * W, y: p.y * H, label: n.label, current: n.current };
   });
 
-  // Rysuj krawędzie
   data.edges.forEach(e => {
     const from = pos[e.from], to = pos[e.to];
     if (!from || !to || to.y < 20) return;
-
     const open = e.weight === 1;
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    const ox = -dy/len*6, oy = dx/len*6;
     ctx.save();
     ctx.strokeStyle = open ? '#4a8a4a' : '#8a2020';
     ctx.lineWidth = open ? 2 : 1.5;
     if (!open) ctx.setLineDash([6, 4]);
-
-    // Lekkie przesunięcie dla krawędzi dwukierunkowych
-    const dx = to.x - from.x, dy = to.y - from.y;
-    const len = Math.sqrt(dx*dx + dy*dy);
-    const ox = -dy / len * 6, oy = dx / len * 6;
-
-    ctx.beginPath();
-    ctx.moveTo(from.x + ox, from.y + oy);
-    ctx.lineTo(to.x + ox, to.y + oy);
-    ctx.stroke();
-
-    // Grot strzałki
+    ctx.beginPath(); ctx.moveTo(from.x+ox, from.y+oy); ctx.lineTo(to.x+ox, to.y+oy); ctx.stroke();
     const angle = Math.atan2(dy, dx);
-    const arrowX = to.x + ox - Math.cos(angle) * 20;
-    const arrowY = to.y + oy - Math.sin(angle) * 20;
+    const ax = to.x+ox - Math.cos(angle)*20, ay = to.y+oy - Math.sin(angle)*20;
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.moveTo(arrowX, arrowY);
-    ctx.lineTo(arrowX - 8 * Math.cos(angle - 0.4), arrowY - 8 * Math.sin(angle - 0.4));
-    ctx.moveTo(arrowX, arrowY);
-    ctx.lineTo(arrowX - 8 * Math.cos(angle + 0.4), arrowY - 8 * Math.sin(angle + 0.4));
+    ctx.moveTo(ax, ay); ctx.lineTo(ax-8*Math.cos(angle-0.4), ay-8*Math.sin(angle-0.4));
+    ctx.moveTo(ax, ay); ctx.lineTo(ax-8*Math.cos(angle+0.4), ay-8*Math.sin(angle+0.4));
     ctx.stroke();
-
-    // Etykieta + waga
-    const mx = (from.x + to.x) / 2 + ox * 2;
-    const my = (from.y + to.y) / 2 + oy * 2;
+    const mx2 = (from.x+to.x)/2+ox*2, my2 = (from.y+to.y)/2+oy*2;
     ctx.fillStyle = open ? '#4a8a4a' : '#8a2020';
     ctx.font = '10px Courier New';
-    ctx.fillText(`${e.label} [${e.weight}]`, mx - 20, my - 4);
+    ctx.fillText(`${e.label} [${e.weight}]`, mx2-20, my2-4);
     ctx.restore();
   });
 
-  // Rysuj węzły
   Object.entries(pos).forEach(([id, p]) => {
     if (p.y < 20) return;
-    const r = 28;
     ctx.save();
-
-    // Cień gracza
-    if (p.current) {
-      ctx.shadowColor = '#d4a843';
-      ctx.shadowBlur = 20;
-    }
-
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = p.current ? '#2a1800' : '#111008';
-    ctx.fill();
+    if (p.current) { ctx.shadowColor = '#d4a843'; ctx.shadowBlur = 20; }
+    ctx.beginPath(); ctx.arc(p.x, p.y, 28, 0, Math.PI*2);
+    ctx.fillStyle = p.current ? '#2a1800' : '#111008'; ctx.fill();
     ctx.strokeStyle = p.current ? '#d4a843' : '#5a4a30';
-    ctx.lineWidth = p.current ? 2.5 : 1;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Ikona gracza
-    if (p.current) {
-      ctx.font = '16px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🧙', p.x, p.y - 6);
-    }
-
-    // Nazwa lokacji
+    ctx.lineWidth = p.current ? 2.5 : 1; ctx.stroke(); ctx.shadowBlur = 0;
+    if (p.current) { ctx.font = '16px serif'; ctx.textAlign = 'center'; ctx.fillText('🧙', p.x, p.y-6); }
     ctx.fillStyle = p.current ? '#d4a843' : '#7a6a50';
-    ctx.font = `${p.current ? 'bold ' : ''}11px Courier New`;
-    ctx.textAlign = 'center';
-    const words = p.label.split(' ');
-    words.forEach((w, i) => {
-      ctx.fillText(w, p.x, p.y + (p.current ? 12 : 6) + i * 13);
-    });
+    ctx.font = `${p.current ? 'bold ' : ''}11px Courier New`; ctx.textAlign = 'center';
+    p.label.split(' ').forEach((w, i) => ctx.fillText(w, p.x, p.y+(p.current?12:6)+i*13));
     ctx.restore();
   });
+
+  ctx.restore();
 }
 
+// ── STAN GRY ──────────────────────────────────────
 function updateInfo(data) {
   const locNode = data.nodes.find(n => n.current);
   document.getElementById('current-loc').textContent = locNode ? locNode.label : '—';
   document.getElementById('turn-info').textContent = `Tura: ${data.state.turn}`;
-
   const inv = data.state.inventory;
   document.getElementById('inventory').innerHTML = inv.length
     ? inv.map(i => `<div class="inv-item">▸ ${i}</div>`).join('')
     : '<div class="inv-item" style="color:#3a2e1e">(pusty)</div>';
-
-  const flagsEl = document.getElementById('flags');
-  flagsEl.innerHTML = Object.entries(data.flags)
-    .map(([k, v]) => `<div class="flag-row"><span class="flag-key">${k}</span><span class="flag-val">${v}</span></div>`)
+  document.getElementById('flags').innerHTML = Object.entries(data.flags)
+    .map(([k,v]) => `<div class="flag-row"><span class="flag-key">${k}</span><span class="flag-val">${v}</span></div>`)
     .join('');
 }
 
+// ── WARIANTY OBRAZKÓW ─────────────────────────────
+let prevFlags = null;
+const eventLog = [];
+
+async function updateVariants() {
+  const res = await fetch('/api/debug/images');
+  const locs = await res.json();
+  const el = document.getElementById('variants-table');
+
+  el.innerHTML = locs.map(loc => `
+    <div class="loc-section">
+      <div class="loc-title">📍 ${loc.loc_name}</div>
+      ${loc.variants.map(v => `
+        <div class="variant-row ${v.active ? 'active' : 'inactive'}">
+          <span class="variant-check">${v.active ? '✓' : '·'}</span>
+          <div class="variant-info">
+            <span class="variant-file">
+              <span class="cached-dot ${v.cached ? 'cached-yes' : 'cached-no'}"></span>
+              ${v.file}.png
+            </span>
+            <span class="variant-label">${v.label}</span>
+            <span class="variant-reason ${v.reason.includes('✗') ? 'miss' : ''}">${v.reason}</span>
+          </div>
+          <button class="regen-btn" onclick="regen('${loc.loc_id}','${v.file}',this)">⟳</button>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+async function regen(locId, fileId, btn) {
+  btn.classList.add('loading');
+  btn.textContent = '...';
+  await fetch(`/api/location-image/${locId}?force=true`);
+  addLog(`⟳ Zregenerowano: <span class="log-img">${fileId}.png</span> dla lokacji ${locId}`);
+  btn.classList.remove('loading');
+  btn.textContent = '⟳';
+  updateVariants();
+}
+
+// ── LOG ZDARZEŃ ───────────────────────────────────
+function addLog(html) {
+  const turn = lastData ? lastData.state.turn : '?';
+  eventLog.unshift(`<div class="log-entry"><span class="log-turn">[t${turn}]</span> ${html}</div>`);
+  if (eventLog.length > 50) eventLog.pop();
+  document.getElementById('event-log').innerHTML = eventLog.join('') || '<span style="color:#3a2e1e">Brak zdarzeń</span>';
+}
+
+function detectFlagChanges(newFlags) {
+  if (!prevFlags) { prevFlags = {...newFlags}; return; }
+  for (const [k, v] of Object.entries(newFlags)) {
+    if (prevFlags[k] !== v) {
+      addLog(`🚩 Flaga zmieniona: <span class="log-flag">${k}</span> = <span class="log-img">${prevFlags[k] ?? '(brak)'}</span> → <span class="log-flag">${v}</span>`);
+      updateVariants();
+    }
+  }
+  prevFlags = {...newFlags};
+}
+
+function detectLocationChange(newLoc, nodes) {
+  if (!prevFlags) return;
+  const prevLoc = Object.keys(prevFlags).length ? null : null;
+}
+
+let prevLocation = null;
+function detectLocation(data) {
+  const cur = data.nodes.find(n => n.current);
+  if (!cur) return;
+  if (cur.id !== prevLocation) {
+    if (prevLocation !== null)
+      addLog(`🚶 Lokacja: <span class="log-text">${prevLocation}</span> → <span class="log-flag">${cur.id}</span>`);
+    prevLocation = cur.id;
+    updateVariants();
+  }
+}
+
+// ── GŁÓWNA PĘTLA ──────────────────────────────────
 async function refresh() {
   try {
     const res = await fetch('/api/debug/graph');
@@ -239,11 +361,12 @@ async function refresh() {
     resize();
     draw(data);
     updateInfo(data);
-  } catch(e) {
-    console.error(e);
-  }
+    detectFlagChanges(data.flags);
+    detectLocation(data);
+  } catch(e) { console.error(e); }
 }
 
+updateVariants();
 refresh();
 setInterval(refresh, 2000);
 </script>
