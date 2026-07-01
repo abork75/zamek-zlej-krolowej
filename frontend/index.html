@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Zamek Złej Królowej</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="game">
+    <header>
+      <h1>🏰 Zamek Złej Królowej</h1>
+      <div id="status-bar">
+        <span id="location-name">Mroczny Las</span>
+        <span id="inventory-display">Ekwipunek: (pusty)</span>
+      </div>
+    </header>
+
+    <div id="narrative-box">
+      <div id="messages"></div>
+    </div>
+
+    <div id="controls">
+      <div id="text-input-area">
+        <input type="text" id="text-input" placeholder="Co robisz? (wpisz lub mów...)" autocomplete="off">
+        <button id="send-btn">Wyślij</button>
+      </div>
+      <div id="voice-area">
+        <button id="voice-btn" class="voice-idle">🎤 Mów</button>
+        <span id="voice-status">Kliknij żeby mówić</span>
+      </div>
+      <button id="reset-btn">🔄 Nowa gra</button>
+    </div>
+  </div>
+
+  <script src="/static/js/game.js"></script>
+  <script src="/static/js/voice.js"></script>
+</body>
+</html>

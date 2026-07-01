@@ -1,0 +1,110 @@
+title: "Zamek Złej Królowej"
+intro: |
+  Stoisz na skraju mrocznego lasu. Gdzieś w oddali widać wieże zamku Złej Królowej.
+  Musisz ją powstrzymać, zanim rzuci swój czar na całe królestwo.
+  Co robisz?
+
+locations:
+  las:
+    name: "Mroczny Las"
+    description: |
+      Jesteś w gęstym, mrocznym lesie. Stare dęby zasłaniają niebo, przez ich korony
+      przebijają się jedynie blade promienie światła. Między korzeniami walają się
+      stare liście. Czujesz zapach wilgoci i mchu.
+      Na północy słyszysz szum rzeki. Na wschodzie widać przebłyski czegoś metalicznego
+      między krzakami. Ścieżka na południe prowadzi z powrotem do wioski.
+    exits:
+      północ: most
+      wschód: polana
+      południe: null  # wyjście z gry / wioska
+    items:
+      - id: kij
+        name: "stary kij"
+        description: "Gruby, dębowy kij. Niezbyt elegancki, ale solidny."
+        takeable: true
+    npcs: []
+    atmosphere: "mroczny, niepokojący, cichy poza szumem wiatru"
+
+  polana:
+    name: "Słoneczna Polana"
+    description: |
+      Wychodząc z lasu trafiasz na małą, słoneczną polanę. Trawa jest tu wysoka,
+      a pośrodku sterczy stary, omszały głaz. Przy głazie leży coś błyszczącego.
+      Na zachodzie ciemnieje las. Więcej ścieżek tu nie ma.
+    exits:
+      zachód: las
+    items:
+      - id: miecz
+        name: "zardzewiały miecz"
+        description: |
+          Stary miecz z zardzewiałym ostrzem. Widać na nim wyryte runy.
+          Mimo rdzy trzyma się całkiem dobrze — ostrze jest wciąż sprawne.
+        takeable: true
+      - id: sakiewka
+        name: "sakiewka ze złotem"
+        description: "Skórzana sakiewka. W środku brzęczą monety — co najmniej 10 złotych."
+        takeable: true
+    npcs: []
+    atmosphere: "jasna, spokojna, kontrastuje z lasem"
+
+  most:
+    name: "Most nad Rzeką Mgieł"
+    description: |
+      Stoisz przed starym kamiennym mostem przerzuconym nad głęboką, mroczną rzeką.
+      Woda jest czarna i spokojna — nie widać dna. Most wygląda solidnie, ale na
+      jego środku siedzi ogromny troll. Ma szarą, kamienistą skórę, wielkie pięści
+      i małe, złośliwe oczka. Kiedy cię widzi, wstaje i warczy:
+      "Nikt nie przejdzie przez mój most! Chyba że... hehe."
+      Za mostem, na północy, widać bramę zamku.
+    exits:
+      południe: las
+      północ: zamek  # zablokowane przez trolla dopóki nie rozwiązano zagadki
+    items: []
+    npcs:
+      - id: troll
+        name: "Troll Strażnik"
+        description: |
+          Ogromny troll o szarej skórze twardej jak kamień. Ma około 3 metrów wzrostu.
+          Jest głupi ale przebiegły w swojej głupocie. Lubi złoto i jedzenie.
+          W nocy — jak wszystkie trolle — śpi bardzo głęboko (trolle śpią od zachodu
+          do wschodu słońca, budzą się na dźwięk głośnych kroków).
+        state: "blokuje_most"
+        scripted_solutions:
+          - id: walka
+            trigger: "gracz ma miecz i atakuje trolla"
+            outcome: |
+              Troll widzi miecz i cofa się. Runy na mieczu świecą się złowrogo.
+              "Stary miecz runiczny! Nie chcę kłopotów..." — mruczy i ustępuje z drogi.
+              Możesz przejść przez most.
+            result: "troll_pokonany"
+          - id: przekupstwo
+            trigger: "gracz oferuje złoto lub sakiewkę"
+            outcome: |
+              Troll widzi złoto i jego oczy robią się wielkie. "Złoooto! Daj, daj!"
+              Wyrywa sakiewkę z twoich rąk i odchodzi pod most, przeliczając monety.
+              Droga wolna.
+            result: "troll_przekupiony"
+        creative_solutions_hint: |
+          Troll to klasyczny fantastyczny archetyp. Trolle śpią w nocy, boją się
+          ognia, są głupie i można je przechytrzyć. Możliwe niekanoniczne rozwiązania
+          które WARTO zaakceptować jeśli gracz jest kreatywny:
+          - czekanie do nocy i przekradanie się (troll śpi)
+          - rozproszenie uwagi trolla (rzucenie czegoś w bok)
+          - podstęp słowny (jeśli bardzo przekonujący)
+          - użycie kija do wywołania hałasu z drugiej strony mostu
+          Oceniaj kreatywność gracza — jeśli plan ma logiczny sens w tym świecie,
+          pozwól mu zadziałać. Gra ma być uczciwa wobec pomysłowego gracza.
+
+  zamek:
+    name: "Brama Zamku Złej Królowej"
+    description: |
+      Stoisz przed potężną bramą zamku. Czarne mury wznosją się wysoko w niebo.
+      Z wieżyczek obserwują cię kamienne gargulce. Brama jest uchylona —
+      jakby ktoś na ciebie czekał. W środku czai się ciemność i zapach siarki.
+      To dopiero początek twoich problemów.
+    exits:
+      południe: most
+    items: []
+    npcs: []
+    atmosphere: "złowieszczy, monumentalny, poczucie nieuchronności"
+    note: "To koniec prototypu — tu gra się rozbuduje w kolejnych iteracjach"
