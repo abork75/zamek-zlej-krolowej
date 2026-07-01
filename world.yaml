@@ -13,10 +13,17 @@ locations:
       stare liście. Czujesz zapach wilgoci i mchu.
       Na północy słyszysz szum rzeki. Na wschodzie widać przebłyski czegoś metalicznego
       między krzakami. Ścieżka na południe prowadzi z powrotem do wioski.
+    description_with_path: |
+      Jesteś w gęstym, mrocznym lesie. Na północy szum rzeki, na wschodzie polana.
+      Więzień wspomniał o ukrytej ścieżce na zachodzie — teraz gdy wiesz gdzie szukać,
+      dostrzegasz ją między starymi dębami. Prowadzi w głąb lasu.
     exits:
       północ: most
       wschód: polana
-      południe: null  # wyjście z gry / wioska
+      południe: null
+      zachód: domek_pustelnika  # dostępne tylko gdy flaga hidden_path_unlocked = true
+    exits_locked:
+      zachód: "Nie widzisz żadnej ścieżki na zachodzie — tylko gęste zarośla."
     items:
       - id: kij
         name: "stary kij"
@@ -98,13 +105,116 @@ locations:
   zamek:
     name: "Brama Zamku Złej Królowej"
     description: |
-      Stoisz przed potężną bramą zamku. Czarne mury wznosją się wysoko w niebo.
-      Z wieżyczek obserwują cię kamienne gargulce. Brama jest uchylona —
-      jakby ktoś na ciebie czekał. W środku czai się ciemność i zapach siarki.
-      To dopiero początek twoich problemów.
+      Stoisz przed potężną bramą zamku. Czarne mury wznoszą się wysoko w niebo,
+      a z wieżyczek obserwują cię nieruchome gargulce. Brama jest zamknięta —
+      na jej środku świeci się dziwny, fioletowy symbol. To magiczny zamek.
+      Przy murze, w żelaznej klatce, siedzi skulony człowiek w łachmanach.
+      Patrzy na ciebie z nadzieją w oczach.
     exits:
       południe: most
+      północ: null  # otwiera się po wypowiedzeniu hasła
     items: []
-    npcs: []
-    atmosphere: "złowieszczy, monumentalny, poczucie nieuchronności"
-    note: "To koniec prototypu — tu gra się rozbuduje w kolejnych iteracjach"
+    npcs:
+      - id: wiezien
+        name: "Więzień"
+        description: |
+          Wychudzony mężczyzna w podartych ubraniach. Przedstawia się jako Benedykt,
+          dawny leśnik. Mówi że siedzi tu od tygodnia — złapała go straż królowej
+          gdy zbierał zioła w lesie. Zna te okolice jak własną kieszeń.
+        state: "uwięziony"
+        scripted_solutions:
+          - id: uwolnienie
+            trigger: "gracz otwiera klatkę, wyważa zamek, używa kija do wyważenia kraty lub w inny sposób uwalnia więźnia"
+            outcome: |
+              Klatka otwiera się z głośnym zgrzytem. Benedykt wychodzi, prostuje plecy
+              i ściska twoją dłoń. 'Dziękuję! Słuchaj — w lesie, między starymi dębami
+              jest ukryta ścieżka na zachód. Prowadzi do domku pustelnika Hieronima.
+              On zna każdy sekret tej okolicy. Może wie jak otworzyć tę bramę.'
+              Benedykt znika w lesie.
+            result: "wiezien_uwolniony"
+            flags: {"wiezien_state": "uwolniony", "hidden_path_unlocked": true}
+        creative_solutions_hint: |
+          Klatka ma zwykły żelazny zamek (nie magiczny). Można ją otworzyć siłą,
+          wyważyć kijem, złamać rdzewiejące zawiasy, lub znaleźć inny fizyczny sposób.
+          Więzień sam nie może się uwolnić — jest zbyt słaby. Akceptuj każde logiczne
+          fizyczne rozwiązanie — to nie jest zagadka magiczna.
+
+      - id: magiczna_brama
+        name: "Magiczna Brama"
+        description: |
+          Brama zamknięta potężnym zaklęciem Złej Królowej. Fioletowy symbol na środku
+          pulsuje miarowo. Próby wyważenia, rozbicia czy wspinaczki kończą się
+          magicznym odpychaniem — niewidzialna siła odrzuca każdego kto dotknie bramy
+          bez znajomości hasła. Hasło jest znane tylko nielicznym — królowa zmieniła je
+          niedawno po ucieczce ostatniego więźnia.
+        state: "zamknięta"
+        scripted_solutions:
+          - id: haslo
+            trigger: "gracz mówi 'Bum bara doom' lub wypowiada to hasło przy bramie"
+            outcome: |
+              Fioletowy symbol gaśnie. Przez chwilę panuje cisza, po czym brama
+              otwiera się powoli z głębokim, kamiennym zgrzytem. Droga do zamku stoi otworem.
+            result: "brama_otwarta"
+            flags: {"brama_state": "otwarta"}
+          - id: zle_haslo
+            trigger: "gracz próbuje innego hasła lub zaklęcia"
+            outcome: |
+              Symbol pulsuje mocniej i odrzuca cię niewidzialną siłą o krok do tyłu.
+              'Błędne hasło' — słyszysz zimny głos jakby z samej bramy.
+            result: "brak_zmiany"
+        creative_solutions_hint: |
+          Brama jest NAPRAWDĘ magicznie zamknięta — fizyczne ataki, wspinaczka,
+          podkopy są neutralizowane przez zaklęcie. Jedynym sposobem jest hasło.
+          Możesz jednak zaakceptować bardzo kreatywne magiczne podejście jeśli gracz
+          ma jakiś magiczny przedmiot (aktualnie nie ma) lub znajdzie lukę w logice zaklęcia.
+          Domyślnie: bez hasła nie wejdzie.
+    atmosphere: "złowieszczy, monumentalny, magiczny — fioletowe światło pulsuje na bramie"
+
+  domek_pustelnika:
+    name: "Domek Pustelnika Hieronima"
+    description: |
+      Ukryta ścieżka prowadzi cię przez gęsty las do małej, drewnianej chatki.
+      Dach pokryty jest mchem, a przy wejściu rosną rzędy ziół w glinianych donicach.
+      Przy drzwiach stoi stary mężczyzna z długą białą brodą. Mierzy cię uważnym wzrokiem.
+      'Rzadko mam gości' — mówi. 'Czego szukasz, wędrowcze?'
+    exits:
+      wschód: las
+    items:
+      - id: zioła
+        name: "zioła lecznicze"
+        description: "Pęczek świeżych ziół — dziurawiec, krwawnik i coś czego nie rozpoznajesz. Rosną przy chatce pustelnika."
+        takeable: true
+    npcs:
+      - id: pustelnik
+        name: "Pustelnik Hieronim"
+        description: |
+          Stary, mądry pustelnik który żyje w lesie od trzydziestu lat. Zna każdy
+          sekret okolicy — w tym hasło do bramy zamku, które podsłuchał od straży
+          królowej wiele lat temu. Jest życzliwy ale nie daje nic za darmo —
+          cierpi na reumatyzm i jego zapasy ziół się skończyły.
+        state: "czeka_na_pomoc"
+        scripted_solutions:
+          - id: zioła_zebrane
+            trigger: "gracz daje pustelnikowi zioła lecznicze które zebrał przy chatce"
+            outcome: |
+              Pustelnik bierze zioła i kiwa głową z zadowoleniem. 'Ah, dziurawiec i krwawnik —
+              właśnie tego mi brakowało. W podzięce powiem ci coś cennego.'
+              Siada na pieńku i ścisza głos: 'Hasło do bramy zamku to... Bum bara doom.
+              Pamiętaj — królowa tego nie zmienia, bo je zapomina.'
+              Pustelnik chichocze pod wąsem.
+            result: "haslo_zdradzone"
+            flags: {"haslo_znane": true, "pustelnik_state": "pomoglismy"}
+          - id: bez_ziol
+            trigger: "gracz pyta o hasło bez przyniesienia ziół"
+            outcome: |
+              Pustelnik kręci głową. 'Informacje mają swoją cenę, przyjacielu.
+              Moje stawy bolą i skończyły mi się zioła. Zbierasz zioła? Rosną tu niedaleko,
+              przy mojej chatce. Przyniesiesz mi pęczek, to pogadamy.'
+            result: "brak_zmiany"
+        creative_solutions_hint: |
+          Pustelnik jest uczciwy i życzliwy — nie jest wrogiem. Można go przekonać
+          innymi sposobami jeśli gracz jest kreatywny: np. zaproponować złoto zamiast ziół
+          (pustelnik powie że nie potrzebuje pieniędzy, tylko lekarstwa), albo bardzo
+          ciekawie opowiedzieć swoją historię (pustelnik jest ciekawski — może się skusić).
+          Zioła rosną tuż przy chatce — gracz powinien je zauważyć i wziąć.
+    atmosphere: "spokojny, ciepły, zapach ziół i dymu z kominka — kontrast z mrocznym lasem"

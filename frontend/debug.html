@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>DEBUG — Zamek Złej Królowej</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a0a; color: #c8b89a; font-family: 'Courier New', monospace; padding: 20px; }
+    h1 { color: #d4a843; font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; }
+
+    #layout { display: flex; gap: 20px; height: calc(100vh - 60px); }
+
+    #graph-panel {
+      flex: 1;
+      border: 1px solid #3a2e1e;
+      border-radius: 4px;
+      background: #0d0900;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #graph-canvas { width: 100%; height: 100%; }
+
+    #info-panel {
+      width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-box {
+      border: 1px solid #3a2e1e;
+      border-radius: 4px;
+      background: #0d0900;
+      padding: 14px;
+    }
+
+    .panel-box h2 { color: #d4a843; font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase; }
+
+    .location-badge {
+      background: #2a1800;
+      border: 1px solid #d4a843;
+      color: #d4a843;
+      padding: 6px 10px;
+      border-radius: 2px;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .flag-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      padding: 3px 0;
+      border-bottom: 1px solid #1a1200;
+    }
+    .flag-key { color: #7a6a50; }
+    .flag-val { color: #a0c080; }
+
+    .inv-item { font-size: 0.8rem; color: #a08040; padding: 2px 0; }
+
+    #refresh-info { font-size: 0.65rem; color: #3a2e1e; margin-top: 6px; }
+
+    .legend { display: flex; flex-direction: column; gap: 6px; font-size: 0.75rem; }
+    .legend-row { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .dot-current { background: #d4a843; }
+    .dot-normal { background: #3a2e1e; border: 1px solid #7a6a50; }
+    .line-open { width: 24px; height: 2px; background: #4a8a4a; }
+    .line-closed { width: 24px; height: 2px; background: #8a2020; border-top: 2px dashed #8a2020; height: 0; }
+  </style>
+</head>
+<body>
+<h1>🗺 Debug — Mapa Świata</h1>
+<div id="layout">
+  <div id="graph-panel">
+    <canvas id="graph-canvas"></canvas>
+  </div>
+  <div id="info-panel">
+    <div class="panel-box">
+      <h2>Lokacja gracza</h2>
+      <div class="location-badge" id="current-loc">—</div>
+      <div id="turn-info" style="font-size:0.7rem;color:#5a4a30"></div>
+    </div>
+    <div class="panel-box">
+      <h2>Ekwipunek</h2>
+      <div id="inventory"></div>
+    </div>
+    <div class="panel-box">
+      <h2>Flagi stanu gry</h2>
+      <div id="flags"></div>
+    </div>
+    <div class="panel-box">
+      <h2>Legenda</h2>
+      <div class="legend">
+        <div class="legend-row"><div class="dot dot-current"></div> Gracz tu jest</div>
+        <div class="legend-row"><div class="dot dot-normal"></div> Lokacja</div>
+        <div class="legend-row"><div class="line-open"></div> Przejście otwarte (1)</div>
+        <div class="legend-row"><div style="width:24px;height:0;border-top:2px dashed #8a2020"></div> Zablokowane (0)</div>
+      </div>
+    </div>
+    <div id="refresh-info">Auto-odświeżanie co 2s</div>
+  </div>
+</div>
+
+<script>
+// Pozycje węzłów (x%, y% canvas)
+const NODE_POS = {
+  las:              { x: 0.45, y: 0.50 },
+  polana:           { x: 0.75, y: 0.50 },
+  most:             { x: 0.45, y: 0.25 },
+  zamek:            { x: 0.45, y: 0.05 },
+  domek_pustelnika: { x: 0.10, y: 0.50 },
+  wnetrze_zamku:    { x: 0.45, y: -0.12 }, // poza ekranem gdy zamknięte
+};
+
+const canvas = document.getElementById('graph-canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function draw(data) {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const pos = {};
+  data.nodes.forEach(n => {
+    const p = NODE_POS[n.id] || { x: 0.5, y: 0.5 };
+    pos[n.id] = { x: p.x * W, y: p.y * H, label: n.label, current: n.current };
+  });
+
+  // Rysuj krawędzie
+  data.edges.forEach(e => {
+    const from = pos[e.from], to = pos[e.to];
+    if (!from || !to || to.y < 20) return;
+
+    const open = e.weight === 1;
+    ctx.save();
+    ctx.strokeStyle = open ? '#4a8a4a' : '#8a2020';
+    ctx.lineWidth = open ? 2 : 1.5;
+    if (!open) ctx.setLineDash([6, 4]);
+
+    // Lekkie przesunięcie dla krawędzi dwukierunkowych
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    const ox = -dy / len * 6, oy = dx / len * 6;
+
+    ctx.beginPath();
+    ctx.moveTo(from.x + ox, from.y + oy);
+    ctx.lineTo(to.x + ox, to.y + oy);
+    ctx.stroke();
+
+    // Grot strzałki
+    const angle = Math.atan2(dy, dx);
+    const arrowX = to.x + ox - Math.cos(angle) * 20;
+    const arrowY = to.y + oy - Math.sin(angle) * 20;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(arrowX, arrowY);
+    ctx.lineTo(arrowX - 8 * Math.cos(angle - 0.4), arrowY - 8 * Math.sin(angle - 0.4));
+    ctx.moveTo(arrowX, arrowY);
+    ctx.lineTo(arrowX - 8 * Math.cos(angle + 0.4), arrowY - 8 * Math.sin(angle + 0.4));
+    ctx.stroke();
+
+    // Etykieta + waga
+    const mx = (from.x + to.x) / 2 + ox * 2;
+    const my = (from.y + to.y) / 2 + oy * 2;
+    ctx.fillStyle = open ? '#4a8a4a' : '#8a2020';
+    ctx.font = '10px Courier New';
+    ctx.fillText(`${e.label} [${e.weight}]`, mx - 20, my - 4);
+    ctx.restore();
+  });
+
+  // Rysuj węzły
+  Object.entries(pos).forEach(([id, p]) => {
+    if (p.y < 20) return;
+    const r = 28;
+    ctx.save();
+
+    // Cień gracza
+    if (p.current) {
+      ctx.shadowColor = '#d4a843';
+      ctx.shadowBlur = 20;
+    }
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = p.current ? '#2a1800' : '#111008';
+    ctx.fill();
+    ctx.strokeStyle = p.current ? '#d4a843' : '#5a4a30';
+    ctx.lineWidth = p.current ? 2.5 : 1;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Ikona gracza
+    if (p.current) {
+      ctx.font = '16px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🧙', p.x, p.y - 6);
+    }
+
+    // Nazwa lokacji
+    ctx.fillStyle = p.current ? '#d4a843' : '#7a6a50';
+    ctx.font = `${p.current ? 'bold ' : ''}11px Courier New`;
+    ctx.textAlign = 'center';
+    const words = p.label.split(' ');
+    words.forEach((w, i) => {
+      ctx.fillText(w, p.x, p.y + (p.current ? 12 : 6) + i * 13);
+    });
+    ctx.restore();
+  });
+}
+
+function updateInfo(data) {
+  const locNode = data.nodes.find(n => n.current);
+  document.getElementById('current-loc').textContent = locNode ? locNode.label : '—';
+  document.getElementById('turn-info').textContent = `Tura: ${data.state.turn}`;
+
+  const inv = data.state.inventory;
+  document.getElementById('inventory').innerHTML = inv.length
+    ? inv.map(i => `<div class="inv-item">▸ ${i}</div>`).join('')
+    : '<div class="inv-item" style="color:#3a2e1e">(pusty)</div>';
+
+  const flagsEl = document.getElementById('flags');
+  flagsEl.innerHTML = Object.entries(data.flags)
+    .map(([k, v]) => `<div class="flag-row"><span class="flag-key">${k}</span><span class="flag-val">${v}</span></div>`)
+    .join('');
+}
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/debug/graph');
+    const data = await res.json();
+    resize();
+    draw(data);
+    updateInfo(data);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

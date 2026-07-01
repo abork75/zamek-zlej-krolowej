@@ -57,12 +57,28 @@ WAŻNE: jeśli stan to "troll_pokonany" lub "troll_przekupiony" — troll nie bl
 """
 
     items_here = ", ".join(i["name"] for i in location.get("items", [])) or "(brak)"
-    exits_list = ", ".join(
-        f"{k} → {v}" for k, v in location.get("exits", {}).items() if v
-    )
+
+    # Buduj listę wyjść z uwzględnieniem flag
+    exits = {}
+    for direction, target in location.get("exits", {}).items():
+        if direction == "zachód" and loc_id == "las" and not hidden_path:
+            continue  # ukryta ścieżka niewidoczna
+        if direction == "północ" and loc_id == "zamek" and not brama_open:
+            continue  # brama zamknięta
+        if target:
+            exits[direction] = target
+    exits_list = ", ".join(f"{k} → {v}" for k, v in exits.items()) or "(brak wyjść)"
+
+    # Użyj opisu z ukrytą ścieżką jeśli odblokowana
+    if loc_id == "las" and hidden_path:
+        description = location.get("description_with_path", location["description"])
+    else:
+        description = location["description"]
 
     troll_defeated = flags.get("troll_state") in ("troll_pokonany", "troll_przekupiony")
     troll_blocks = loc_id == "most" and not troll_defeated
+    hidden_path = flags.get("hidden_path_unlocked", False)
+    brama_open = flags.get("brama_state") == "otwarta"
 
     return f"""Jesteś Mistrzem Gry w tekstowej grze przygodowej "Zamek Złej Królowej".
 Rozmawiasz z graczem głosowo — odpowiadaj żywo, obrazowo, w drugiej osobie liczby pojedynczej.
@@ -70,7 +86,7 @@ Odpowiedzi max 3-4 zdania (to głos, nie tekst).
 
 === AKTUALNA LOKACJA GRACZA ===
 Gracz jest TERAZ w: {location['name']} (id: {loc_id})
-Opis: {location['description'].strip()}
+Opis: {description.strip()}
 Atmosfera: {location.get('atmosphere', '')}
 Dostępne wyjścia z tej lokacji: {exits_list}
 Przedmioty TUTAJ (tylko te może wziąć): {items_here}

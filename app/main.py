@@ -22,6 +22,49 @@ def index():
     return FileResponse(str(FRONTEND / "index.html"))
 
 
+@app.get("/debug")
+def debug_page():
+    return FileResponse(str(FRONTEND / "debug.html"))
+
+
+@app.get("/api/debug/graph")
+def debug_graph():
+    state = load_state()
+    world = load_world()
+    flags = state["flags"]
+
+    troll_defeated = flags.get("troll_state") in ("troll_pokonany", "troll_przekupiony")
+    hidden_path = flags.get("hidden_path_unlocked", False)
+    brama_open = flags.get("brama_state") == "otwarta"
+
+    # Wszystkie możliwe krawędzie z wagami
+    edges = [
+        {"from": "las",              "to": "polana",           "label": "wschód",   "weight": 1},
+        {"from": "polana",           "to": "las",              "label": "zachód",   "weight": 1},
+        {"from": "las",              "to": "most",             "label": "północ",   "weight": 1},
+        {"from": "most",             "to": "las",              "label": "południe", "weight": 1},
+        {"from": "most",             "to": "zamek",            "label": "północ",   "weight": 1 if troll_defeated else 0},
+        {"from": "zamek",            "to": "most",             "label": "południe", "weight": 1},
+        {"from": "las",              "to": "domek_pustelnika", "label": "zachód",   "weight": 1 if hidden_path else 0},
+        {"from": "domek_pustelnika", "to": "las",              "label": "wschód",   "weight": 1},
+        {"from": "zamek",            "to": "wnetrze_zamku",    "label": "północ",   "weight": 1 if brama_open else 0},
+    ]
+
+    nodes = [
+        {"id": loc_id, "label": loc["name"],
+         "current": loc_id == state["current_location"]}
+        for loc_id, loc in world["locations"].items()
+    ]
+    nodes.append({"id": "wnetrze_zamku", "label": "Wnętrze Zamku", "current": False})
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "state": state,
+        "flags": flags,
+    }
+
+
 @app.post("/api/reset")
 def reset():
     state = reset_state()
@@ -124,12 +167,33 @@ def _parse_gm_response(raw: str, state: dict) -> tuple[str, dict]:
         except json.JSONDecodeError:
             pass
 
-    # Zabezpieczenie: jeśli narracja wskazuje na pokonanie trolla ale flaga nie została zaktualizowana
+    # Fallback: troll pokonany
     troll_keywords = ["ustępuje", "chowa się", "ucieka", "nie chcę kłopotów", "droga wolna", "przekupiony", "zasnął"]
     if (state["current_location"] == "most"
             and state["flags"].get("troll_state") == "blokuje_most"
             and any(kw in narrative.lower() for kw in troll_keywords)):
         state["flags"]["troll_state"] = "troll_pokonany"
+
+    # Fallback: więzień uwolniony
+    wiezien_keywords = ["klatka się otwiera", "klatka otwiera", "benedykt wychodzi", "ukryta ścieżka", "pustelnik hieronima"]
+    if (state["current_location"] == "zamek"
+            and not state["flags"].get("hidden_path_unlocked")
+            and any(kw in narrative.lower() for kw in wiezien_keywords)):
+        state["flags"]["wiezien_state"] = "uwolniony"
+        state["flags"]["hidden_path_unlocked"] = True
+
+    # Fallback: hasło wypowiedziane przy bramie
+    if (state["current_location"] == "zamek"
+            and state["flags"].get("brama_state") != "otwarta"
+            and ("brama" in narrative.lower() and ("otwiera się" in narrative.lower() or "stoi otworem" in narrative.lower()))):
+        state["flags"]["brama_state"] = "otwarta"
+
+    # Fallback: pustelnik zdradził hasło
+    if (state["current_location"] == "domek_pustelnika"
+            and not state["flags"].get("haslo_znane")
+            and "bum bara doom" in narrative.lower()):
+        state["flags"]["haslo_znane"] = True
+        state["flags"]["pustelnik_state"] = "pomoglismy"
 
     state["turn"] += 1
     state["history"].append({"turn": state["turn"], "gm": narrative})
