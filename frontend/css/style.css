@@ -1,5 +1,63 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── ENDING OVERLAY ── */
+#ending-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#ending-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#ending-epilogue {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 60px;
+  background: #000;
+  animation: fadeIn 2s ease;
+}
+
+#ending-epilogue-text {
+  font-family: 'Courier New', monospace;
+  font-size: 1.05rem;
+  color: #c8b89a;
+  line-height: 2;
+  text-align: center;
+  max-width: 700px;
+  font-style: italic;
+}
+
+#ending-restart {
+  background: #1a0a2a;
+  border: 1px solid #8a40cc;
+  color: #c080ff;
+  padding: 10px 28px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 1px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+#ending-restart:hover {
+  background: #2a1040;
+  box-shadow: 0 0 16px #6a2a9a66;
+}
+
 body {
   background: #0d0d0d;
   color: #c8b89a;
@@ -90,6 +148,7 @@ header h1 {
 }
 
 .message.gm::before { content: "⚔ "; color: #d4a843; }
+.message.thinking { animation: pulse 1s infinite; color: #5a4a30 !important; }
 .message.player::before { content: "> "; color: #4a7a4a; }
 
 @keyframes fadeIn {
@@ -105,6 +164,48 @@ header h1 {
   flex-direction: column;
   gap: 10px;
   flex-shrink: 0;
+}
+
+#exits-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#exits-label {
+  font-size: 0.7rem;
+  color: #5a4a30;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+#exits-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.exit-btn {
+  background: #1a1200;
+  border: 1px solid #4a3a10;
+  color: #c8a050;
+  padding: 5px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.exit-btn:hover { background: #2a1e00; border-color: #8a6020; color: #e8c060; }
+
+.exit-btn.blocked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: dashed;
+  color: #8a3030;
+  border-color: #4a1a1a;
 }
 
 #text-input-area {

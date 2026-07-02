@@ -23,6 +23,10 @@
           <div id="messages"></div>
         </div>
         <div id="controls">
+          <div id="exits-panel">
+            <div id="exits-label">Wyjścia:</div>
+            <div id="exits-buttons"></div>
+          </div>
           <div id="text-input-area">
             <input type="text" id="text-input" placeholder="Co robisz? (wpisz lub mów...)" autocomplete="off">
             <button id="send-btn">Wyślij</button>
@@ -45,7 +49,7 @@
           </div>
           <img id="location-image" src="" alt="" style="display:none">
           <div id="image-loading" style="display:none">
-            <span class="placeholder-icon" style="animation: pulse 1.5s infinite">⚙</span>
+            <span class="placeholder-icon" style="animation: pulse 1.5s infinite">�?/span>
             <span class="placeholder-label">Generuję obrazek...</span>
           </div>
         </div>
@@ -63,7 +67,23 @@
 
   </div>
 
-  <script src="/static/js/game.js"></script>
+  <div id="ending-overlay" style="display:none">
+    <video id="ending-video" playsinline></video>
+    <div id="ending-epilogue" style="display:none">
+      <div id="ending-epilogue-text">
+        I tak oto zakończyła się bohaterska misja naszego wojownika.
+        Chciałoby się powiedzieć ...i żyli długo i szczęśliwie,
+        ale to nie do końca prawda. Szczęśliwie żyli oboje, ale niezbyt długo.
+        Śmiałka już wkrótce zastąpił kolejny śmiałek, gdyż królowa szybko się
+        nudziła nowymi nabytkami. Marny los spotykał tych, którzy nie byli jej już potrzebni.
+        Sama zaś zła królowa została wkrótce obalona przez piękną czarodziejkę.
+        Ale to już zupełnie inna historia.
+      </div>
+      <button id="ending-restart">Zagraj ponownie</button>
+    </div>
+  </div>
+
+  <script src="/static/js/game.js?v=2"></script>
   <script src="/static/js/voice.js"></script>
 </body>
 </html>

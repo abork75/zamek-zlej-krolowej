@@ -73,14 +73,14 @@
       border: 1px solid transparent;
     }
     .variant-row.active   { background: #1a1200; border-color: #5a3a10; }
-    .variant-row.inactive { opacity: 0.45; }
+    .variant-row.inactive { opacity: 0.7; }
 
     .variant-check { color: #d4a843; font-size: 0.8rem; }
     .variant-info  { display: flex; flex-direction: column; gap: 2px; }
-    .variant-file  { color: #c8a050; }
-    .variant-label { color: #7a6a50; font-size: 0.65rem; }
-    .variant-reason { color: #5a8a5a; font-size: 0.65rem; font-style: italic; }
-    .variant-reason.miss { color: #6a3a3a; }
+    .variant-file  { color: #e8cc88; }
+    .variant-label { color: #d0b888; font-size: 0.65rem; }
+    .variant-reason { color: #a0e090; font-size: 0.65rem; font-style: italic; }
+    .variant-reason.miss { color: #f08888; }
 
     .regen-btn {
       background: #1a0800;
@@ -114,6 +114,12 @@
     .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dot-current { background: #d4a843; }
     .dot-normal  { background: #3a2e1e; border: 1px solid #7a6a50; }
+
+    .focused-badge { font-size: 0.65rem; color: #6a9a9a; margin-top: 4px; }
+    #teleport-btn { font-size: 0.65rem; background: #1a0a2a; border: 1px solid #6a3a9a; color: #c080ff; padding: 2px 8px; cursor: pointer; border-radius: 2px; margin-left: 8px; }
+    #teleport-btn:hover { background: #2a1040; border-color: #9a60cc; }
+    .loc-section.focused .loc-title { color: #6adfdf; }
+    .loc-section:not(.focused) { opacity: 0.65; }
   </style>
 </head>
 <body>
@@ -131,6 +137,7 @@
       <h2>Lokacja gracza</h2>
       <div class="location-badge" id="current-loc">—</div>
       <div id="turn-info" style="font-size:0.65rem;color:#5a4a30"></div>
+      <button id="reset-game-btn" style="margin-top:10px;width:100%;background:#1a0000;border:1px solid #6a1a1a;color:#cc4444;padding:5px;font-family:'Courier New',monospace;font-size:0.65rem;cursor:pointer;border-radius:2px;letter-spacing:1px">⚠ Reset gry do startu</button>
     </div>
     <div class="panel-box">
       <h2>Ekwipunek</h2>
@@ -155,7 +162,7 @@
   <!-- KOLUMNA 3: Warianty obrazków + Log -->
   <div id="image-panel">
     <div class="panel-box scrollable">
-      <h2>Warianty obrazków</h2>
+      <h2>Warianty obrazków <span id="focused-badge" class="focused-badge"></span> <button id="teleport-btn" style="display:none"></button></h2>
       <div id="variants-table"></div>
     </div>
     <div class="panel-box scrollable">
@@ -168,18 +175,27 @@
 
 <script>
 const NODE_POS = {
-  las:              { x: 0.45, y: 0.55 },
-  polana:           { x: 0.62, y: 0.55 },
-  most:             { x: 0.45, y: 0.30 },
-  zamek:            { x: 0.45, y: 0.08 },
-  domek_pustelnika: { x: 0.28, y: 0.55 },
-  wnetrze_zamku:    { x: 0.45, y: -0.12 },
+  las:                 { x: 0.45, y: 0.78 },
+  polana:              { x: 0.64, y: 0.78 },
+  most:                { x: 0.45, y: 0.60 },
+  zamek:               { x: 0.45, y: 0.42 },
+  klatka_wieznia:      { x: 0.64, y: 0.42 },
+  dziedziniec_zamku:   { x: 0.45, y: 0.24 },
+  sala_tronowa:        { x: 0.45, y: 0.05 },
+  korytarz:            { x: 0.45, y: 0.12 },
+  loch:                { x: 0.62, y: 0.18 },
+  kanaly:              { x: 0.78, y: 0.24 },
+  wnetrze_zamku:       { x: 0.45, y: 0.06 },
+  domek_pustelnika:    { x: 0.22, y: 0.78 },
+  wnetrze_hatki:       { x: 0.22, y: 0.93 },
 };
 
 // ── GRAF ──────────────────────────────────────────
 const canvas = document.getElementById('graph-canvas');
 const ctx = canvas.getContext('2d');
 let scale = 1, panX = 0, panY = 0, isPanning = false, lastMX = 0, lastMY = 0, lastData = null;
+let focusedNode = null;
+let didPan = false;
 
 function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
 window.addEventListener('resize', () => { resize(); if (lastData) draw(lastData); });
@@ -195,17 +211,79 @@ canvas.addEventListener('wheel', e => {
   if (lastData) draw(lastData);
 }, { passive: false });
 
-canvas.addEventListener('mousedown', e => { isPanning = true; lastMX = e.clientX; lastMY = e.clientY; canvas.style.cursor = 'grabbing'; });
+canvas.addEventListener('mousedown', e => { isPanning = true; didPan = false; lastMX = e.clientX; lastMY = e.clientY; canvas.style.cursor = 'grabbing'; });
 canvas.addEventListener('mousemove', e => {
   if (!isPanning) return;
-  panX += e.clientX - lastMX; panY += e.clientY - lastMY;
+  const dx = e.clientX - lastMX, dy = e.clientY - lastMY;
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didPan = true;
+  panX += dx; panY += dy;
   lastMX = e.clientX; lastMY = e.clientY;
   if (lastData) draw(lastData);
 });
-canvas.addEventListener('mouseup',    () => { isPanning = false; canvas.style.cursor = 'grab'; });
+canvas.addEventListener('mouseup', e => {
+  isPanning = false; canvas.style.cursor = 'grab';
+  if (!didPan && lastData) handleCanvasClick(e);
+});
 canvas.addEventListener('mouseleave', () => { isPanning = false; canvas.style.cursor = 'grab'; });
 canvas.style.cursor = 'grab';
-document.addEventListener('keydown', e => { if (e.key === '0') { scale=1; panX=0; panY=0; if (lastData) draw(lastData); } });
+document.addEventListener('keydown', e => {
+  if (e.key === '0') { scale=1; panX=0; panY=0; if (lastData) draw(lastData); }
+  if (e.key === 'Escape') { focusedNode = null; if (lastData) { draw(lastData); applyFocus(); } }
+});
+
+function handleCanvasClick(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left - panX) / scale;
+  const my = (e.clientY - rect.top  - panY) / scale;
+  const W = canvas.width, H = canvas.height;
+
+  let hit = null;
+  lastData.nodes.forEach(n => {
+    const p = NODE_POS[n.id];
+    if (!p) return;
+    const nx = p.x * W, ny = p.y * H;
+    if (Math.sqrt((mx-nx)**2 + (my-ny)**2) < 28) hit = n.id;
+  });
+
+  focusedNode = (hit === focusedNode) ? null : hit; // toggle
+  draw(lastData);
+  applyFocus();
+}
+
+function applyFocus() {
+  document.querySelectorAll('.loc-section').forEach(el => {
+    if (!focusedNode) {
+      el.classList.remove('focused');
+    } else {
+      el.classList.toggle('focused', el.dataset.locId === focusedNode);
+    }
+  });
+  const badge = document.getElementById('focused-badge');
+  if (badge) badge.textContent = focusedNode ? `Fokus: ${focusedNode} (Esc = wyczyść)` : '';
+
+  const teleportBtn = document.getElementById('teleport-btn');
+  if (teleportBtn) {
+    if (focusedNode) {
+      teleportBtn.style.display = 'inline-block';
+      teleportBtn.textContent = `⚡ Teleportuj → ${focusedNode}`;
+      teleportBtn.onclick = () => teleport(focusedNode);
+    } else {
+      teleportBtn.style.display = 'none';
+    }
+  }
+}
+
+async function teleport(locId) {
+  const res = await fetch('/api/debug/teleport', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ location: locId }),
+  });
+  if (res.ok) {
+    addLog(`⚡ Teleport → <span class="log-flag">${locId}</span>`);
+    await refresh();
+  }
+}
 
 function draw(data) {
   lastData = data;
@@ -219,40 +297,44 @@ function draw(data) {
     pos[n.id] = { x: p.x * W, y: p.y * H, label: n.label, current: n.current };
   });
 
+  // Scalamy pary A↔B w jedną linię (kolor = min waga — czerwona jeśli któryś kierunek zablokowany)
+  const drawn = new Set();
   data.edges.forEach(e => {
     const from = pos[e.from], to = pos[e.to];
-    if (!from || !to || to.y < 20) return;
-    const open = e.weight === 1;
+    if (!from || !to || to.y < 20 || from.y < 20) return;
+    const pairKey = [e.from, e.to].sort().join('|');
+    if (drawn.has(pairKey)) return;
+    drawn.add(pairKey);
+
+    const reverse = data.edges.find(r => r.from === e.to && r.to === e.from);
+    const minWeight = Math.min(e.weight, reverse ? reverse.weight : 1);
+    const open = minWeight === 1;
+
     const dx = to.x - from.x, dy = to.y - from.y;
-    const len = Math.sqrt(dx*dx + dy*dy);
-    const ox = -dy/len*6, oy = dx/len*6;
     ctx.save();
     ctx.strokeStyle = open ? '#4a8a4a' : '#8a2020';
     ctx.lineWidth = open ? 2 : 1.5;
     if (!open) ctx.setLineDash([6, 4]);
-    ctx.beginPath(); ctx.moveTo(from.x+ox, from.y+oy); ctx.lineTo(to.x+ox, to.y+oy); ctx.stroke();
-    const angle = Math.atan2(dy, dx);
-    const ax = to.x+ox - Math.cos(angle)*20, ay = to.y+oy - Math.sin(angle)*20;
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(ax, ay); ctx.lineTo(ax-8*Math.cos(angle-0.4), ay-8*Math.sin(angle-0.4));
-    ctx.moveTo(ax, ay); ctx.lineTo(ax-8*Math.cos(angle+0.4), ay-8*Math.sin(angle+0.4));
-    ctx.stroke();
-    const mx2 = (from.x+to.x)/2+ox*2, my2 = (from.y+to.y)/2+oy*2;
+    const mx2 = (from.x + to.x) / 2, my2 = (from.y + to.y) / 2;
     ctx.fillStyle = open ? '#4a8a4a' : '#8a2020';
     ctx.font = '10px Courier New';
-    ctx.fillText(`${e.label} [${e.weight}]`, mx2-20, my2-4);
+    ctx.textAlign = 'center';
+    ctx.fillText(`[${minWeight}]`, mx2 + 10, my2 - 4);
     ctx.restore();
   });
 
   Object.entries(pos).forEach(([id, p]) => {
     if (p.y < 20) return;
     ctx.save();
+    const isFocused = focusedNode === id;
     if (p.current) { ctx.shadowColor = '#d4a843'; ctx.shadowBlur = 20; }
+    if (isFocused)  { ctx.shadowColor = '#4adada'; ctx.shadowBlur = 24; }
     ctx.beginPath(); ctx.arc(p.x, p.y, 28, 0, Math.PI*2);
     ctx.fillStyle = p.current ? '#2a1800' : '#111008'; ctx.fill();
-    ctx.strokeStyle = p.current ? '#d4a843' : '#5a4a30';
-    ctx.lineWidth = p.current ? 2.5 : 1; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = p.current ? '#d4a843' : isFocused ? '#4adada' : '#5a4a30';
+    ctx.lineWidth = p.current ? 2.5 : isFocused ? 2 : 1; ctx.stroke(); ctx.shadowBlur = 0;
     if (p.current) { ctx.font = '16px serif'; ctx.textAlign = 'center'; ctx.fillText('🧙', p.x, p.y-6); }
     ctx.fillStyle = p.current ? '#d4a843' : '#7a6a50';
     ctx.font = `${p.current ? 'bold ' : ''}11px Courier New`; ctx.textAlign = 'center';
@@ -287,7 +369,7 @@ async function updateVariants() {
   const el = document.getElementById('variants-table');
 
   el.innerHTML = locs.map(loc => `
-    <div class="loc-section">
+    <div class="loc-section" data-loc-id="${loc.loc_id}">
       <div class="loc-title">📍 ${loc.loc_name}</div>
       ${loc.variants.map(v => `
         <div class="variant-row ${v.active ? 'active' : 'inactive'}">
@@ -365,6 +447,14 @@ async function refresh() {
     detectLocation(data);
   } catch(e) { console.error(e); }
 }
+
+document.getElementById('reset-game-btn').addEventListener('click', async () => {
+  if (!confirm('Reset gry do ustawień startowych?')) return;
+  await fetch('/api/reset', { method: 'POST' });
+  addLog('🔄 Gra zresetowana do startu');
+  await refresh();
+  updateVariants();
+});
 
 updateVariants();
 refresh();
