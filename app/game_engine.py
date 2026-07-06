@@ -3,12 +3,14 @@ import json
 import yaml
 from pathlib import Path
 
-WORLD_FILE = Path(__file__).parent.parent / "world.yaml"
+from app.config import get_game_dir
+
 STATE_FILE = Path(__file__).parent.parent / "game_state.json"
 
 
 def load_world() -> dict:
-    return yaml.safe_load(WORLD_FILE.read_text(encoding="utf-8"))
+    world_file = get_game_dir() / "world.yaml"
+    return yaml.safe_load(world_file.read_text(encoding="utf-8"))
 
 
 def load_state() -> dict:

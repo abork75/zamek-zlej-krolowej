@@ -1,0 +1,1006 @@
+title: "Zamek Królowej"
+
+start_location: "pokoj_karczmy"
+
+intro_pokoj_karczmy: |
+  Budzisz się w małym pokoju na górze karczmy. Głowa boli — za dużo wczoraj wypiłeś.
+  Przez okno widać szare niebo nad miastem Kamienna Góra.
+  Karawana królewska, przy której służyłeś jako ochroniarz, odjechała w nocy bez zapłaty.
+  Musisz dowiedzieć się gdzie pojechała i odzyskać swoje pieniądze.
+  Co robisz?
+
+intro: |
+  Stoisz na skraju mrocznego lasu. Gdzieś w oddali widać wieże zamku Królowej.
+  Musisz ją powstrzymać, zanim rzuci swój czar na całe królestwo.
+  Co robisz?
+
+mechanics:
+  city_arrest:
+    track_flags: [pytanie_karczma, pytanie_ratusz, pytanie_targowisko, pytanie_brama]
+    threshold: 3
+    sets_flag: siepaczy_nadchodzą
+
+events:
+  - id: zasadzka_miejska
+    condition: {flag: siepaczy_nadchodzą, value: true}
+    trigger_locations: [ulica, karczma, ratusz, targowisko, zaulek, brama_miasta]
+    narrative: |
+      Zaledwie wchodzisz, gdy dwóch rosłych mężczyzn w szarych płaszczach zagradza ci drogę.
+      Trzeci pojawia się za twoimi plecami. Zanim zdążysz sięgnąć po broń, masz skute ręce.
+      "Z rozkazu Jej Królewskiej Mości — zadajesz za dużo pytań" — mówi jeden krótko.
+      Twój ekwipunek ląduje w worku. Wrzucają cię na wóz i ruszają w stronę lasu.
+    target_location: transport_wiezniarski
+    inventory_clear: true
+
+locations:
+  las:
+    name: "Mroczny Las"
+    image_variants:
+      - file: "las"
+        condition: null
+        label: "Mroczny las (domyślny)"
+        prompt_extra: "gęsty mroczny las, stare dęby, blade światło przez korony, mgła przy ziemi"
+    description: |
+      Jesteś w gęstym, mrocznym lesie. Stare dęby zasłaniają niebo, przez ich korony
+      przebijają się jedynie blade promienie światła. Między korzeniami walają się
+      stare liście. Czujesz zapach wilgoci i mchu.
+      Na północy słyszysz szum rzeki. Na wschodzie widać przebłyski czegoś metalicznego
+      między krzakami. Ścieżka na południe prowadzi z powrotem do wioski.
+    description_with_path: |
+      Jesteś w gęstym, mrocznym lesie. Na północy szum rzeki, na wschodzie polana.
+      Więzień wspomniał o ukrytej ścieżce na zachodzie — teraz gdy wiesz gdzie szukać,
+      dostrzegasz ją między starymi dębami. Prowadzi w głąb lasu.
+    exits:
+      północ: most
+      wschód: polana
+      zachód:
+        target: domek_pustelnika
+        requires: {flag: hidden_path_unlocked, value: true}
+        hidden: true
+        blocked_message: "Nie widzisz żadnej ścieżki na zachodzie — tylko gęste zarośla."
+    items:
+      - id: kij
+        name: "stary kij"
+        hint: "gruby kij leżący między korzeniami drzew"
+        description: "Gruby, dębowy kij. Niezbyt elegancki, ale solidny. Mógłby posłużyć jako broń lub dźwignia."
+        takeable: true
+    npcs: []
+    atmosphere: "mroczny, niepokojący, cichy poza szumem wiatru"
+
+  polana:
+    name: "Słoneczna Polana"
+    image_variants:
+      - file: "polana_pusta"
+        condition:
+          - {inventory_contains: "zardzewiały miecz"}
+          - {inventory_contains: "sakiewka ze złotem"}
+        label: "Polana bez połysku (oba przedmioty wzięte)"
+        prompt_extra: "usuń rozbłysk światła nad kamieniem, reszta sceny bez zmian"
+      - file: "polana"
+        base: true
+        condition: null
+        label: "Słoneczna polana z połyskiem (domyślna)"
+        prompt_extra: "słoneczna polana, wysoka trawa, omszały głaz pośrodku, jasny rozbłysk światła bezpośrednio nad kamieniem, jasne spokojne światło"
+    description: |
+      Wychodząc z lasu trafiasz na małą, słoneczną polanę. Trawa jest tu wysoka,
+      a pośrodku sterczy stary, omszały głaz. Przy głazie leży coś błyszczącego.
+      Na zachodzie ciemnieje las. Więcej ścieżek tu nie ma.
+    exits:
+      zachód: las
+      wschód: sciezka_lesna
+    items:
+      - id: miecz
+        name: "zardzewiały miecz"
+        hint: "coś błyszczącego przy omszałym głazie"
+        description: |
+          Stary miecz z zardzewiałym ostrzem. Widać na nim wyryte runy.
+          Mimo rdzy trzyma się całkiem dobrze — ostrze jest wciąż sprawne.
+        takeable: true
+      - id: sakiewka
+        name: "sakiewka ze złotem"
+        hint: "coś błyszczącego przy omszałym głazie"
+        description: "Skórzana sakiewka. W środku brzęczą monety — co najmniej 10 złotych."
+        takeable: true
+    npcs: []
+    atmosphere: "jasna, spokojna, kontrastuje z lasem"
+
+  sciezka_lesna:
+    name: "Ścieżka w Lesie"
+    image_variants:
+      - file: "sciezka_niedzwiedz"
+        base: true
+        condition: {flag: "niedzwiedz_state", value: "blokuje_sciezke"}
+        label: "Niedźwiedź na ścieżce (baza I2I)"
+        prompt_extra: "duży brunatny niedźwiedź stojący na leśnej ścieżce, na ziemi leży żelazny pręt, gęsty las dookoła, mroczna atmosfera"
+      - file: "sciezka_pret"
+        condition:
+          - {inventory_missing: "żelazny pręt"}
+          - {flag: zelazny_pret_uzyte, value_not: true}
+        label: "Ścieżka z prętem (bez niedźwiedzia)"
+        prompt_extra: "usuń niedźwiedzia ze ścieżki, pozostaw żelazny pręt leżący na ziemi, reszta sceny bez zmian"
+      - file: "sciezka_pusta"
+        condition: null
+        label: "Pusta ścieżka (domyślna)"
+        prompt_extra: "usuń niedźwiedzia i żelazny pręt ze ścieżki, reszta sceny bez zmian"
+    description_variants:
+      - condition: {flag: niedzwiedz_state, value: blokuje_sciezke}
+        description: |
+          Wąska leśna ścieżka wije się między starymi dębami.
+          Na środku ścieżki stoi ogromny brunatny niedźwiedź. Patrzy na ciebie
+          nieruchomo małymi czarnymi oczami, chrapiąc głośno przez nozdrza.
+          Droga na południe — skrót przez las — jest zablokowana.
+      - condition: null
+        description: |
+          Wąska leśna ścieżka wije się między starymi dębami.
+          Niedźwiedź zniknął w gęstwinie. Na ziemi, tam gdzie stał, leży
+          żelazny pręt — pewnie wypadł z jakiegoś wozu.
+          Na południu widać skrót przez las prowadzący do znajomych okolic.
+    exits:
+      zachód: polana
+      południe:
+        target: las
+        requires: {flag: niedzwiedz_state, values: [niedzwiedz_pokonany, niedzwiedz_odszedl]}
+        hidden: true
+    items:
+      - id: zelazny_pret
+        name: "żelazny pręt"
+        hint: "żelazny pręt leżący na ziemi"
+        description: |
+          Solidny żelazny pręt, długości ramienia. Ciężki i wytrzymały —
+          nadaje się do wyważania zamków lub krat.
+        takeable: true
+        hidden_when: {flag: zelazny_pret_uzyte, value: true}
+    npcs:
+      - id: niedzwiedz
+        name: "Brunatny Niedźwiedź"
+        description: |
+          Ogromny brunatny niedźwiedź. To zwierzę — nie rozumie słów i nigdy nie mówi.
+          Komunikuje się WYŁĄCZNIE dźwiękami: warczenie, ryk, sapanie, pomruk.
+          Odpowiadaj ZAWSZE tylko jako zwierzę — żadnych słów, tylko odgłosy i opis zachowania.
+          Reaguje na ruch i zagrożenie, ignoruje słowa i przedmioty które mu się pokazuje.
+          Na aktywne zagrożenie (atak, wymachiwanie bronią, agresywny ruch) — ucieka.
+          Na bierne pokazywanie przedmiotów — niedzwiedź nie jest zainteresowany oglądaniem.
+          Jeśli gracz stoi bez ruchu wystarczająco długo — traci zainteresowanie i odchodzi.
+        state: "blokuje_sciezke"
+        unavailable_states:
+          niedzwiedz_pokonany: "Niedźwiedź leży pokonany na skraju ścieżki."
+          niedzwiedz_odszedl: "Niedźwiedź zniknął w gęstwinie — nie wróci."
+        scripted_solutions:
+          - id: walka_mieczem
+            requires: {inventory: "zardzewiały miecz"}
+            action_hint: "gracz musi wyraźnie wskazać użycie miecza lub broni — samo 'atakuj/walnij/uderz' bez wskazania czym nie wystarczy"
+            trigger: "gracz aktywnie używa miecza wobec niedźwiedzia — atakuje, grozi, wymachuje, straszy"
+            outcome: |
+              Niedźwiedź cofa się z głośnym rykiem, instynkt każę mu uciekać
+              przed wymachiwanym ostrzem. Znika w gęstwinie z głośnym łomotem
+              łamanych gałęzi. Na ziemi, tam gdzie stał, dostrzegasz żelazny pręt.
+            flags: {niedzwiedz_state: niedzwiedz_pokonany}
+          - id: bezruch
+            action_hint: "gracz musi wyrazić intencję stania/czekania właśnie wobec niedźwiedzia lub przy ścieżce — samo 'poczekaj' bez kontekstu nie wystarczy"
+            trigger: "gracz stoi bez ruchu, czeka nieruchomo, nie rusza się, zastyga w bezruchu"
+            outcome: |
+              Stoisz bez ruchu jak posąg. Niedźwiedź wpatruje się w ciebie
+              przez długą chwilę. Traci zainteresowanie, odwraca się powoli
+              i odchodzi w głąb lasu ciężkim krokiem. Na ziemi, tam gdzie stał,
+              dostrzegasz żelazny pręt.
+            flags: {niedzwiedz_state: niedzwiedz_odszedl}
+        creative_solutions_hint: |
+          Niedźwiedź to zwierzę — nie rozmawia, nie reaguje na słowa ani pokazywane przedmioty.
+          Możliwe rozwiązania:
+          - aktywne użycie miecza (atak, straszenie, wymachiwanie) — niedźwiedź ucieka
+          - stanie bez ruchu — niedźwiedź odchodzi gdy traci zainteresowanie
+          Bierne pokazywanie czegokolwiek nie działa — niedźwiedź ignoruje.
+
+  most:
+    name: "Most nad Rzeką Mgieł"
+    image_variants:
+      - file: "most_troll"
+        condition: {flag: "troll_state", value: "blokuje_most"}
+        label: "Troll blokuje most"
+        prompt_extra: "zbliżenie na ogromnego szarego trolla, kamienna skóra, złośliwe małe oczy, rozmyty kamienny most i czarna rzeka w tle, dramatyczne oświetlenie"
+      - file: "most"
+        condition: null
+        label: "Most spokojny (domyślny)"
+        prompt_extra: "stary kamienny most nad czarną rzeką mgieł, brak postaci, mroczna atmosfera, mgła unosi się nad wodą"
+    description_variants:
+      - condition: {flag: troll_state, value: blokuje_most}
+        description: |
+          Stoisz przed starym kamiennym mostem przerzuconym nad głęboką, mroczną rzeką.
+          Woda jest czarna i spokojna — nie widać dna. Na środku mostu siedzi ogromny troll
+          o szarej, kamienistej skórze i małych, złośliwych oczkach. Kiedy cię widzi, wstaje i warczy:
+          "Nikt nie przejdzie przez mój most! Chyba że... hehe."
+          Za trollem, na północy, widać w oddali bramę zamku.
+      - condition: null
+        description: |
+          Stoisz przed starym kamiennym mostem nad czarną, mroczną rzeką.
+          Most jest teraz wolny — troll zniknął. Mgła unosi się nad wodą.
+          Na północy widać bramę zamku.
+    exits:
+      południe: las
+      północ:
+        target: zamek
+        requires: {flag: troll_state, values: [troll_pokonany, troll_przekupiony, troll_spany]}
+        blocked_message: "Troll blokuje przejście na północ — musisz go najpierw pokonać lub ominąć."
+    items: []
+    npcs:
+      - id: troll
+        name: "Troll Strażnik"
+        description: |
+          Ogromny troll o szarej skórze twardej jak kamień. Ma około 3 metrów wzrostu.
+          Mówi słabo — gdera monosylabami, myli słowa, miesza kolejność zdań.
+          Interesuje go wyłącznie jedzenie (co by tu zjeść, czy coś tu jest do jedzenia)
+          i złoto (ile masz, daj, gdzie więcej). Na pytania o cokolwiek innego
+          odpowiada tępym spojrzeniem albo "Nie wiem. Jeść chcę." lub "Złoto daj."
+          W nocy śpi bardzo głęboko — nie da się go obudzić bez hałasu.
+        unavailable_states:
+          troll_spany: "Troll śpi głęboko pod mostem — chrapie tak głośno że aż most drży."
+          troll_pokonany: "Troll uciekł w popłochu — nie ma go już przy moście."
+          troll_przekupiony: "Troll siedzi pod mostem i przelicza złoto — ignoruje cię zupełnie."
+        state: "blokuje_most"
+        scripted_solutions:
+          - id: walka
+            requires: {inventory: "zardzewiały miecz"}
+            action_hint: "gracz musi wyraźnie wskazać użycie miecza lub broni — samo 'atakuj/walnij/uderz' bez wskazania czym nie wystarczy"
+            trigger: "gracz atakuje trolla"
+            outcome: |
+              Troll widzi miecz i cofa się. Runy na mieczu świecą się złowrogo.
+              "Stary miecz runiczny! Nie chcę kłopotów..." — mruczy i ustępuje z drogi.
+              Możesz przejść przez most.
+            result: "troll_pokonany"
+            flags: {troll_state: "troll_pokonany"}
+          - id: przekupstwo
+            requires: {inventory: "sakiewka ze złotem"}
+            action_hint: "gracz musi wyraźnie zaoferować lub wręczyć złoto/sakiewkę trollowi — samo posiadanie złota nie wystarczy"
+            trigger: "gracz daje złoto lub sakiewkę trollowi"
+            outcome: |
+              Troll widzi złoto i jego oczy robią się wielkie. "Złoooto! Daj, daj!"
+              Wyrywa sakiewkę z twoich rąk i odchodzi pod most, przeliczając monety.
+              Droga wolna.
+            result: "troll_przekupiony"
+            flags: {troll_state: "troll_przekupiony"}
+          - id: ucieczka_snem
+            action_hint: "gracz musi wyraźnie wyrazić intencję czekania do nocy, obserwowania trolla lub czekania aż zaśnie — samo 'poczekaj' bez kontekstu nie wystarczy"
+            trigger: "gracz czeka do nocy, gracz czeka aż troll zaśnie, gracz przekrada się gdy troll śpi"
+            outcome: |
+              Czekasz cierpliwie. Słońce zachodzi za horyzont. Troll ziewa głośno,
+              przeciąga się i zapada w głęboki kamienny sen pod mostem.
+              Przekradasz się cicho po moście. Droga wolna.
+            flags: {troll_state: "troll_spany"}
+        creative_solutions_hint: |
+          Troll to klasyczny fantastyczny archetyp. Trolle śpią w nocy, boją się
+          ognia, są głupie i można je przechytrzyć. Możliwe niekanoniczne rozwiązania
+          które WARTO zaakceptować jeśli gracz jest kreatywny:
+          - czekanie do nocy i przekradanie się (troll śpi)
+          - rozproszenie uwagi trolla (rzucenie czegoś w bok)
+          - podstęp słowny (jeśli bardzo przekonujący)
+          - użycie kija do wywołania hałasu z drugiej strony mostu
+          Oceniaj kreatywność gracza — jeśli plan ma logiczny sens w tym świecie,
+          pozwól mu zadziałać. Gra ma być uczciwa wobec pomysłowego gracza.
+
+  zamek:
+    name: "Brama Zamku Królowej"
+    image_variants:
+      - file: "zamek_otwarta"
+        condition: {flag: "brama_state", value: "otwarta"}
+        label: "Brama otwarta"
+        prompt_extra: "potężna czarna brama zamku uchylona, fioletowe światło gaśnie, mroczne mury, gargulce na wieżyczkach"
+      - file: "zamek"
+        condition: null
+        label: "Brama zamknięta (domyślna)"
+        prompt_extra: "potężna czarna brama zamku, fioletowy magiczny symbol pulsuje na bramie, mroczne mury, gargulce na wieżyczkach, bez klatki"
+    description_variants:
+      - condition: {flag: brama_state, value: otwarta}
+        description: |
+          Stoisz przed potężną bramą zamku — wrota stoją otworem. Fioletowy symbol
+          na bramie zgasł. Czarne mury wznoszą się wysoko, gargulce milczą.
+          Droga do zamku stoi otworem.
+      - condition: null
+        description: |
+          Stoisz przed potężną bramą zamku. Czarne mury wznoszą się wysoko w niebo,
+          a z wieżyczek obserwują cię nieruchome gargulce. Brama jest zamknięta —
+          na jej środku świeci się dziwny, fioletowy symbol. To magiczny zamek.
+    exits:
+      południe: most
+      wschód: klatka_wieznia
+      północ:
+        target: dziedziniec_zamku
+        requires: {flag: brama_state, value: otwarta}
+        blocked_message: "Brama zamku jest magicznie zamknięta — fioletowy symbol odpycha każdego kto dotknie wrót."
+    items: []
+    npcs:
+      - id: magiczna_brama
+        name: "Magiczna Brama"
+        description: |
+          Brama zamknięta potężnym zaklęciem Królowej. Fioletowy symbol na środku
+          pulsuje miarowo. Próby wyważenia, rozbicia czy wspinaczki kończą się
+          magicznym odpychaniem. Hasło jest znane tylko nielicznym.
+          WAŻNE: brama otwiera się WYŁĄCZNIE gdy gracz wypowie właściwe hasło.
+          Żadna inna akcja — uwolnienie więźnia, atak, użycie przedmiotu — NIE otwiera bramy.
+          NIGDY nie podpowiadaj ani nie ujawniaj hasła — gracz musi je zdobyć sam.
+        state: "zamknięta"
+        scripted_solutions:
+          - id: haslo
+            trigger: "gracz WYPOWIADA SŁOWNIE dokładnie hasło 'Bum bara dum' stojąc przed bramą"
+            outcome: |
+              Fioletowy symbol gaśnie. Przez chwilę panuje cisza, po czym brama
+              otwiera się powoli z głębokim, kamiennym zgrzytem. Droga do zamku stoi otworem.
+            result: "brama_otwarta"
+            flags: {"brama_state": "otwarta"}
+          - id: zle_haslo
+            trigger: "gracz próbuje innego hasła, zaklęcia lub jakiejkolwiek innej akcji na bramie"
+            outcome: |
+              Symbol pulsuje mocniej i odrzuca cię niewidzialną siłą o krok do tyłu.
+              'Błędne hasło' — słyszysz zimny głos jakby z samej bramy.
+            result: "brak_zmiany"
+        creative_solutions_hint: |
+          Brama otwiera się WYŁĄCZNIE po wypowiedzeniu właściwego hasła.
+          Żadna inna akcja nie otwiera bramy. Uwolnienie więźnia po wschodniej stronie
+          muru to zupełnie osobna akcja — nie ma związku z otwarciem bramy.
+    atmosphere: "złowieszczy, monumentalny, magiczny — fioletowe światło pulsuje na bramie"
+
+  klatka_wieznia:
+    name: "Klatka przy Murze Zamku"
+    image_variants:
+      - file: "klatka_pusta"
+        condition: {flag: wiezien_state, value: uwolniony}
+        label: "Pusta klatka (więzień uwolniony)"
+        prompt_extra: "otwarta żelazna klatka przy kamiennym murze zamku, puste wnętrze, rdzewiejące kraty, mroczna atmosfera"
+      - file: "klatka_wiezien"
+        condition: null
+        label: "Klatka z więźniem (domyślna)"
+        prompt_extra: "żelazna klatka z skulonym więźniem w łachmanach przy kamiennym murze zamku, nadzieja w oczach, mroczna atmosfera"
+    description_variants:
+      - condition: {flag: wiezien_state, value: uwolniony}
+        description: |
+          Po wschodniej stronie muru stoi teraz pusta, otwarta klatka.
+          Benedykt już dawno zniknął w lesie. Droga wolna — możesz wrócić na zachód do bramy.
+      - condition: null
+        description: |
+          Po wschodniej stronie muru zamku stoi żelazna klatka. W środku siedzi
+          skulony mężczyzna w podartych ubraniach. Podnosi głowę gdy cię widzi —
+          w jego oczach błyska nadzieja. 'Proszę... pomóż mi stąd wyjść' — szepcze.
+    exits:
+      zachód: zamek
+    items: []
+    npcs:
+      - id: wiezien
+        name: "Więzień Benedykt"
+        description: |
+          Wychudzony mężczyzna w podartych ubraniach. Przedstawia się jako Benedykt,
+          dawny leśnik. Siedzi tu od tygodnia — złapała go straż królowej gdy zbierał zioła.
+          Zna te okolice jak własną kieszeń. Jeśli wiezien_state = "uwolniony" — już go tu nie ma.
+        state: "uwięziony"
+        scripted_solutions:
+          - id: uwolnienie_pretem
+            requires: {inventory: "żelazny pręt"}
+            trigger: "gracz wyważa kratę lub zamek klatki"
+            outcome: |
+              Wsadzasz żelazny pręt między kraty i napierasz całym ciężarem.
+              Metal skrzypi, zawiasy pękają z hukiem — pręt łamie się na pół, ale klatka
+              stoi otworem. Benedykt wychodzi, prostuje plecy i ściska twoją dłoń.
+              'Dziękuję! W lesie, między starymi dębami jest ukryta ścieżka na zachód.
+              Prowadzi do domku pustelnika Hieronima — on zna hasło do bramy.'
+              Benedykt znika w lesie.
+            flags: {"wiezien_state": "uwolniony", "hidden_path_unlocked": true, "zelazny_pret_uzyte": true}
+            inventory_remove: ["żelazny pręt"]
+          - id: proba_bez_preta
+            requires: {inventory_missing: "żelazny pręt"}
+            trigger: "gracz próbuje otworzyć klatkę, wyważyć zamek lub uwolnić więźnia"
+            outcome: |
+              Nawet tak silny wojownik jak ty nie da rady tego otworzyć gołymi rękami.
+              Zawiasy są grube, krata solidna — potrzebujesz czegoś do wyważenia.
+            flags: {}
+        creative_solutions_hint: |
+          Klatka ma zwykły żelazny zamek (nie magiczny). Można ją otworzyć TYLKO
+          żelaznym prętem z ekwipunku — wyważając zawiasy lub zamek.
+          Bez pręta żadna siła nie wystarczy — powiedz to graczowi wprost.
+          WAŻNE: uwolnienie więźnia NIE otwiera bramy zamku — to dwie osobne sprawy.
+    atmosphere: "przygnębiający, zimny, zapach rdzy i wilgoci przy kamiennym murze"
+
+  domek_pustelnika:
+    name: "Przed Chatką Pustelnika"
+    image_variants:
+      - file: "domek_pustelnika"
+        condition: null
+        label: "Przed chatką (domyślna)"
+        prompt_extra: "mała drewniana chatka w lesie, dach pokryty mchem, rzędy ziół w glinianych donicach przy wejściu, ciepłe światło z okna, uchylone drzwi"
+    description: |
+      Ukryta ścieżka prowadzi cię przez gęsty las do małej, drewnianej chatki.
+      Dach pokryty jest mchem, a przy wejściu rosną rzędy ziół w glinianych donicach —
+      dziurawiec, krwawnik i inne, których nie rozpoznajesz.
+      Drzwi chatki są uchylone. Z środka dobiega ciepłe światło i zapach dymu.
+    exits:
+      wschód: las
+      wejście: wnetrze_hatki
+    items:
+      - id: zioła
+        name: "zioła lecznicze"
+        hint: "rzędy ziół rosnących w glinianych donicach przy wejściu"
+        description: "Pęczek świeżych ziół — dziurawiec, krwawnik i coś czego nie rozpoznajesz. Rosną przy chatce pustelnika."
+        takeable: true
+    npcs: []
+    atmosphere: "spokojny, ciepły, zapach ziół i dymu z kominka — kontrast z mrocznym lasem"
+
+  wnetrze_hatki:
+    name: "Wnętrze Chatki Pustelnika"
+    image_variants:
+      - file: "wnetrze_hatki_pomoglismy"
+        condition: {flag: "pustelnik_state", value: "pomoglismy"}
+        label: "Pustelnik zadowolony (po ziołach)"
+        prompt_extra: "wnętrze małej chatki leśnej, stary mędrzec z białą brodą siedzi przy drewnianym stole, ziołowe pęczki suszą się pod sufitem, ciepłe świeczki, zadowolony uśmiech"
+      - file: "wnetrze_hatki"
+        condition: null
+        label: "Wnętrze chatki (domyślna)"
+        prompt_extra: "wnętrze małej chatki leśnej, stary mędrzec z białą brodą siedzi przy drewnianym stole zawalonym księgami, ziołowe pęczki pod sufitem, ciepłe świeczki"
+    description: |
+      Wchodzisz do ciepłej, małej chatki. Pod sufitem zwisają pęczki suszonych ziół,
+      a przy oknie stoi drewniany stół zawalony księgami i ziołowymi naczyniami.
+      Przy stole siedzi stary mężczyzna z długą białą brodą i przenikliwymi oczami.
+      'Rzadko mam gości' — mówi, odkładając księgę. 'Czego szukasz, wędrowcze?'
+    exits:
+      wyjście: domek_pustelnika
+    items: []
+    npcs:
+      - id: pustelnik
+        name: "Pustelnik Hieronim"
+        description: |
+          Stary, mądry pustelnik który żyje w lesie od trzydziestu lat. Mówi powoli,
+          metaforycznie — zanim odpowie na pytanie, okrąża je z każdej strony.
+          Obserwuje gwiazdy od lat i zna cykle księżyca. Wie które zwierzęta żyją
+          w okolicy bo słyszy je nocami. Zna legendy o zamku i Królowej ale
+          podaje je ostrożnie, jakby się bał konsekwencji. Odpowiada na każde pytanie
+          — o przyrodę, niebo, historię — ale zawsze przez pryzmat filozofii i obserwacji.
+          Zna sekret okolicy — w tym hasło do bramy zamku, ale NIGDY go nie wypowiada
+          dopóki gracz nie przyniesie ziół. Nie podpowiada, nie sugeruje, nie wymawia hasła
+          ani jego części. Mówi tylko że zna pewien sekret i że ma swoją cenę.
+          Jest życzliwy ale nie daje nic za darmo — cierpi na reumatyzm i jego zapasy ziół się skończyły.
+          Jeśli pustelnik_state = "pomoglismy" — hasło zostało już zdradzone w OUTCOME skryptu.
+          Pustelnik może je POWTÓRZYĆ tylko gdy gracz zapyta po raz kolejny: "Bum bara dum".
+        state: "czeka_na_pomoc"
+        scripted_solutions:
+          - id: zioła_zebrane
+            requires: {inventory: "zioła lecznicze"}
+            allow_talk: true
+            trigger: "gracz daje pustelnikowi zioła lecznicze które zebrał przed chatką"
+            outcome: |
+              Pustelnik bierze zioła i kiwa głową z zadowoleniem. 'Ah, dziurawiec i krwawnik —
+              właśnie tego mi brakowało. W podzięce powiem ci coś cennego.'
+              Siada przy stole i ścisza głos: 'Hasło do bramy zamku to... Bum bara dum.
+              Pamiętaj — królowa tego nie zmienia, bo je zapomina co tydzień.'
+              Pustelnik chichocze pod wąsem.
+            result: "haslo_zdradzone"
+            flags: {"haslo_znane": true, "pustelnik_state": "pomoglismy"}
+          - id: bez_ziol
+            requires: {inventory_missing: "zioła lecznicze"}
+            trigger: "gracz pyta o hasło bez przyniesienia ziół"
+            outcome: |
+              Pustelnik kręci głową. 'Informacje mają swoją cenę, przyjacielu.
+              Moje stawy bolą i skończyły mi się zioła. Przed chatką rosną — dziurawiec i krwawnik.
+              Przyniesiesz mi pęczek, to pogadamy.'
+            result: "brak_zmiany"
+        creative_solutions_hint: |
+          Pustelnik jest uczciwy i życzliwy — nie jest wrogiem. Można go przekonać
+          innymi sposobami jeśli gracz jest kreatywny: np. zaproponować złoto zamiast ziół
+          (pustelnik powie że nie potrzebuje pieniędzy, tylko lekarstwa), albo bardzo
+          ciekawie opowiedzieć swoją historię (pustelnik jest ciekawski — może się skusić).
+          Zioła rosną tuż przed chatką — gracz musi tam wyjść i je zebrać.
+    atmosphere: "przytulny, ciepły, zapach ziół i starego drewna — miejsce pełne mądrości"
+    
+  dziedziniec_zamku:
+    name: "Dziedziniec zamku Królowej"
+    image_variants:
+      - file: "straznik_dziedziniec"
+        condition: {flag: "straznik_state", value: "blokuje_przejscie"}
+        label: "Straznik nie pozwala przejść"
+        prompt_extra: "Strażnik stoi na pierwszym planie z mieczem w ręku, w tle Dziedziniec średniowiecznego zamku"
+      - file: "pusty_dziedziniec"
+        condition: null
+        label: "Pusty dziedziniec"
+        prompt_extra: "Dziedziniec średniowiecznego zamku, widać w tle wejście główne i z prawej małą furtkę, a z lewej schody w dół"
+    description: |
+      Stoisz na dziedzincu zamku Królowej, przed Tobą pojawia się strażnik, i pyta wrogo:
+      "Dokąd to?"
+    exits:
+      południe: zamek
+      północ:
+        target: korytarz
+        requires: {flag: straznik_state, values: [straznik_pokonany, straznik_przekupiony, straznik_oszukany]}
+        blocked_message: "Strażnik tak po prostu Cię nie przepuści."
+    items: []
+    npcs:
+      - id: straznik_dziedziniec
+        name: "Strażnik pilnujący dziedzińca"
+        description: |
+          Rosły gbur w przerdzawiałej zbroi. Mało rozgarnięty, niezbyt odważny.
+          Interesuje go wyłącznie alkohol (gdzie się napić, czy masz coś do picia,
+          wczoraj była taka dobra nalewka) i zamkowe dziewki (opisuje je rubaszne,
+          z idiotycznym uśmiechem). Na poważne pytania odpowiada półsłówkami
+          albo zbywa je żartem w stylu "a co mi tam". Swojej roboty nie lubi
+          ale się jej trzyma bo gdzie indziej go nie chcą.
+        unavailable_states:
+          straznik_pokonany: "Strażnik leży na ziemi — nie będzie już z nikim rozmawiał."
+          straznik_przekupiony: "Strażnik wziął złoto i zniknął — pewnie poszedł na gorzałkę."
+          straznik_oszukany: "Strażnik uciekł w popłochu — gdzieś się schował i nie wróci."
+        state: "blokuje_przejscie"
+        scripted_solutions:
+          - id: walka
+            requires: {inventory: "zardzewiały miecz"}
+            trigger: "gracz atakuje strażnika"
+            flags: {straznik_state: straznik_pokonany}
+            outcome: |
+              "Strażnik podejmuje walkę i ginie w niej - okazuje się dużo słabszy, krew zalewa dziedziniec.".
+            result: "straznik_pokonany"
+          - id: przekupstwo
+            requires: {inventory: "sakiewka ze złotem"}
+            allow_talk: true
+            trigger: "gracz oferuje złoto lub sakiewkę"
+            flags: {straznik_state: straznik_przekupiony}
+            outcome: |
+              Strażnik bierze złoto i mówi: "Taksa za przejście zapłacona". Następnie odchodzi
+            result: "straznik_przekupiony"
+          - id: blef_szlachcic
+            trigger: "gracz podszywa się pod szlachcica, kupca lub ważną osobę, zastrasza konsekwencjami, przymila się wychwalając odwagę lub honor strażnika"
+            outcome: |
+              Strażnik słucha twoich słów i wyraźnie blednie. Jego wzrok błądzi nerwowo,
+              a ręka opada bezwładnie. Po chwili mamrocze coś pod nosem i szybko się oddala,
+              zostawiając cię samego na dziedzińcu. Droga wolna.
+            flags: {straznik_state: straznik_oszukany}
+        creative_solutions_hint: |
+          Strażnik jest mało rozgarnięty i ma niskie morale. Nie ma ochoty ginąć za swoją królową:
+          - można wdać się w dialog i można go przekonać do ucieczki/oddalenia się:
+          - podając się za możnego szlachica/kupca przedstawiciela gildii lub podobnej szanowanej w średniowieczu i jakie go nie spotkają konsekwencje jeżeli nie przepuści nas dalej
+          - zastraszyć, ale do teg potrzebny item miecz. Wtedy ucieka. Trzeba użyć argumentów bardziej kreatywnych niż tylko typu 'mam miecz, uciekaj'
+          - przymilnie, wychwalając jego walory których mu szczególnie brakuje, czyli odwagę i honor
+
+  sala_tronowa:
+    name: "Sala Tronowa Królowej"
+    ending: "queen_seduction"
+    image_variants:
+      - file: "sala_tronowa"
+        condition: null
+        label: "Sala tronowa"
+        prompt_extra: "ogromna mroczna sala tronowa średniowiecznego zamku, czarne kolumny, fioletowe płomienie w pochodniach, na tronie siedzi piękna mroczna królowa w czarnej sukni z koroną, patrzy uwodzicielsko"
+    description: |
+      Pchnięcie masywnych drzwi i stajesz w progu sali tronowej.
+      Ogromne, mroczne wnętrze wypełnia fioletowe światło pochodni. Czarne kolumny
+      giną gdzieś wysoko w ciemnościach sklepienia. Na końcu sali, na obsydianowym
+      tronie, siedzi kobieta.
+      Złą Królową widziałeś wcześniej tylko na pogłoskach — rzeczywistość jest zupełnie inna.
+      Jest młoda. Piękna. I patrzy na ciebie z uśmiechem, który mówi że czekała właśnie na ciebie.
+    exits:
+      południe: korytarz
+    items: []
+    npcs:
+      - id: krolowa
+        name: "Królowa"
+        description: |
+          Czarna suknia, korona z obsydianu, oczy koloru bursztynu. Mówi spokojnie,
+          jakby wiedziała z góry jak ta rozmowa się skończy. Jest królową od dziesięciu lat
+          i przez ten czas nikt nie dotarł tak daleko jak ty. To ją bawi — i intryguje.
+    atmosphere: "monumentalny, mroczny, fioletowe światło, zapach kadzidła i czegoś słodkiego — nieodparcie przyciągający"
+
+  korytarz:
+    name: "Szeroki korytarz zamkowy"
+    image_variants:
+      - file: "korytarz_drzwi"
+        condition: {flag: przy_drzwiach, value: true}
+        label: "Zbliżenie na drzwi sali tronowej"
+        prompt_extra: "zbliżenie na masywne okuowane drzwi średniowiecznego zamku, pochodni blask pada na ciemne drewno i żelazne okucia, fioletowy blask sączy się spod drzwi"
+      - file: "korytarz_wolny"
+        condition: {flag: zapadnia_zauwazona, value: true}
+        label: "Korytarz — pułapka znana, droga wolna"
+        prompt_extra: "usuń rysy z posadzki, dodaj wyraźną bezpieczną ścieżkę wzdłuż ściany prowadzącą do masywnych drzwi, reszta sceny bez zmian"
+      - file: "korytarz_zamkowy"
+        base: true
+        condition: null
+        label: "Korytarz z zapadnią (baza)"
+        prompt_extra: "Szeroki kamienny korytarz średniowiecznego zamku, pochodnie na ścianach, w posadzce ledwo widoczne rysy wskazujące na zapadnię, w tle masywne drzwi do sali tronowej"
+    description: |
+      Wchodzisz do szerokiego kamiennego korytarza. Płomienie pochodni po obu stronach
+      rzucają tańczące cienie na wypolerowane kamienne płyty posadzki. Na końcu korytarza
+      widoczne są masywne, okuowane drzwi — pewnie wejście do sali tronowej.
+      Posadzka jest gładka i zimna pod stopami.
+    exits:
+      południe: dziedziniec_zamku
+      północ:
+        target: sala_tronowa
+        requires: {flag: zapadnia_zauwazona, value: true}
+        hidden: false
+        blocked_message: "Ruszasz w stronę drzwi — ale posadzka usuwa się pod nogami!"
+        trap:
+          target: loch
+          message: "Nie zauważasz zapadni w porę — kamienne płyty rozsuwają się bez ostrzeżenia i wpadasz w ciemność! Upadasz twardo na kamienną posadzkę poniżej."
+    items:
+      - id: zapadnia
+        name: "kamienne płyty"
+        hint: "podejrzane rysy w posadzce, pułapka, zapadnia"
+        description: "Przyjrzawszy się uważnie, dostrzegasz cienkie rysy tworzące regularny prostokąt — to zapadnia! Można ją ominąć, trzymając się przy ścianie."
+        takeable: false
+        examine_sets_flag: {zapadnia_zauwazona: true}
+        set_on: examine
+        bypass_sets_flag: {przy_drzwiach: true}
+      - id: drzwi_tronowe
+        name: "masywne drzwi"
+        hint: "okuowane drzwi na końcu korytarza, wejście do sali tronowej"
+        description: "Masywne drzwi z ciemnego drewna, okute żelazem. Spod nich sączy się fioletowy blask. Czujesz jak powietrze wibruje — za nimi jest coś potężnego."
+        takeable: false
+        examine_sets_flag: {przy_drzwiach: true}
+        set_on: examine
+    npcs: []
+    atmosphere: "chłodny, kamienno-torcherowy korytarz, napięcie przed salą tronową — coś tu jest nie tak z posadzką"
+
+  loch:
+    name: "Ciemny loch pod zamkiem"
+    image_variants:
+      - file: "loch_zamkowy"
+        condition: null
+        label: "Loch"
+        prompt_extra: "Ciemna, wilgotna komnata pod zamkiem, grube kamienne ściany pokryte mchem, w jednym miejscu ledwo widoczna wąska szczelina w murze, słabe światło sączy się z góry"
+    description: |
+      Lądujesz z hukiem na zimnej, wilgotnej kamiennej posadzce. Przez chwilę leżysz,
+      zbierając myśli — bolą Cię wszystkie kości. Wokół jest niemal całkowita ciemność,
+      rozjaśniana jedynie słabą smugą światła z otworu wysoko w suficie, przez który
+      właśnie wpadłeś. Ściany z grubego kamienia są pokryte mchem i wilgocią.
+      Czujesz przeciąg z jednej ze ścian — gdzieś tu musi być wyjście.
+    exits:
+      zachód:
+        target: kanaly
+        requires: {flag: wyjscie_z_lochu_znalezione, value: true}
+        hidden: true
+        blocked_message: "Mur wydaje się jednolity — nie widzisz żadnego wyjścia."
+    items:
+      - id: ukryte_przejscie
+        name: "wąska szczelina w murze"
+        hint: "podejrzana część muru zachodniej ściany"
+        description: "Przykładasz dłoń do zachodniej ściany i czujesz silniejszy przeciąg. Naciskasz kamień — i fragment muru powoli się cofa! Oto wąskie przejście prowadzące dalej."
+        takeable: false
+        examine_sets_flag: {wyjscie_z_lochu_znalezione: true}
+        set_on: examine
+    npcs: []
+    atmosphere: "wilgoć, ciemność, zapach stęchlizny i zimnego kamienia — cisza przerywana kapaniem wody"
+
+  kanaly:
+    name: "Podziemne kanały odprowadzające"
+    image_variants:
+      - file: "kanaly_podziemne"
+        condition: null
+        label: "Kanały"
+        prompt_extra: "Wąski podziemny tunel z cegły, woda sięga do kolan, w oddali widać jasność — wyjście na zewnątrz, blask lasu"
+    description: |
+      Przeciskasz się przez wąskie przejście i ląduje w wilgotnym tunelu. Woda
+      sięga do kolan — to stare kanały odprowadzające ścieki z zamku. Trudno tu oddychać,
+      ale w oddali widać jasność. Kamienny tunel biegnie na zachód, gdzie blask słońca
+      przedziera się przez gęstą roślinność. Wolność jest blisko.
+    exits:
+      zachód: las
+    items: []
+    npcs: []
+    atmosphere: "zimna woda do kolan, smród ścieków, ale w oddali zbawienne światło lasu"
+
+  # ===== POZIOM 1: MIASTO =====
+
+  pokoj_karczmy:
+    name: "Pokój na górze karczmy"
+    image_variants:
+      - file: "pokoj_karczmy_bez_klucza"
+        condition: {inventory_contains: "klucz do pokoju"}
+        label: "Pokój — klucz wzięty"
+        prompt_extra: "mały, skromny pokój na górze karczmy, łóżko z siennikiem, pusty stół bez klucza, stara szafa pod ścianą, okno wychodzące na miasto, szare ranne światło"
+      - file: "pokoj_karczmy"
+        base: true
+        condition: null
+        label: "Mały pokój w karczmie (z kluczem na stole)"
+        prompt_extra: "mały, skromny pokój na górze karczmy, łóżko z siennikiem, stół z kluczem, stara szafa pod ścianą, okno wychodzące na miasto, szare ranne światło"
+    description: |
+      Mały, duszny pokój. Łóżko z siennikiem, stół, stara szafa pod ścianą.
+      Na stole leży klucz — pewnie od drzwi wyjściowych. Drzwi na południe są zamknięte.
+      Za oknem szare niebo nad Kamienną Górą.
+    exits:
+      wyjście:
+        target: karczma
+        requires: {flag: drzwi_pokoj_otwarte, value: true}
+        hidden: false
+        blocked_message: "Drzwi są zamknięte na klucz. Musisz je najpierw otworzyć."
+    items:
+      - id: klucz_pokoj
+        name: "klucz do pokoju"
+        hint: "żelazny klucz leżący na stole"
+        description: "Zwykły żelazny klucz. Do drzwi wyjściowych z pokoju."
+        takeable: true
+      - id: szafa
+        name: "stara szafa"
+        hint: "stara drewniana szafa pod ścianą"
+        description: "Otwierasz szafę. W środku twój dobytek z ostatniej wyprawy — weź co potrzebujesz."
+        takeable: false
+        examine_sets_flag: {szafa_otwarta: true}
+        set_on: examine
+      - id: miecz_bojowy
+        name: "miecz bojowy"
+        hint: "miecz w szafie"
+        description: "Solidny miecz bojowy, dobrze wyważony. Twój stary towarzysz."
+        takeable: true
+        hidden_when: {flag: szafa_otwarta, value: null}
+      - id: tarcza
+        name: "tarcza"
+        hint: "okrągła tarcza w szafie"
+        description: "Okrągła drewniana tarcza z żelaznym umbonem. Nieraz uratowała ci życie."
+        takeable: true
+        hidden_when: {flag: szafa_otwarta, value: null}
+      - id: kolczuga
+        name: "kolczuga"
+        hint: "kolczuga w szafie"
+        description: "Twoja kolczuga — dobra ochrona, trochę ciężka, ale niezawodna."
+        takeable: true
+        hidden_when: {flag: szafa_otwarta, value: null}
+      - id: mieszek_m
+        name: "mieszek ze złotem"
+        hint: "mieszek na dnie szafy"
+        description: "Twoje oszczędności — kilka złotych monet. Mało, ale zawsze coś."
+        takeable: true
+        hidden_when: {flag: szafa_otwarta, value: null}
+    npcs:
+      - id: drzwi_pokoj
+        name: "zamknięte drzwi"
+        description: |
+          Solidne drewniane drzwi z żelaznym zamkiem. Otwierają się kluczem.
+          Nie próbuj ich wyważać — karczmarz ma cię na oku.
+        state: "zamknięte"
+        creative_solutions_hint: |
+          To są nieożywione drzwi — nie rozmawiają, nie odpowiadają na pytania, nie mają osobowości.
+          Jedyne możliwe działanie to otwarcie kluczem. Na wszystkie inne próby odpowiedz krótko
+          że to zwykłe drewniane drzwi i nic więcej.
+        scripted_solutions:
+          - id: otworz_kluczem
+            requires: {inventory: "klucz do pokoju"}
+            allow_talk: true
+            trigger: "gracz używa klucza na drzwiach lub otwiera drzwi kluczem"
+            outcome: |
+              Wkładasz klucz do zamka i przekręcasz. Drzwi otwierają się z cichym skrzypnięciem.
+              Możesz wyjść.
+            flags: {drzwi_pokoj_otwarte: true}
+    atmosphere: "duszny poranek, smród taniego piwa i słomy, głowa boli po wczorajszym"
+
+  karczma:
+    name: "Karczma Pod Złotym Dzbanem"
+    image_variants:
+      - file: "karczma"
+        condition: null
+        label: "Wnętrze karczmy"
+        prompt_extra: "wnętrze średniowiecznej karczmy, grube drewniane stoły, kilku gości, za ladą gruby karczmarz wyciera kufle, niskie belkowane stropy, poranne szare światło przez małe okna"
+    description: |
+      Na dole karczmy gwar porannych gości. Za długą ladą stoi karczmarz Bolesław —
+      gruby, rumiany, wyciera kufle ścierką. Przy stolikach kilku woźniców i kupców.
+      Na południe wyjście na ulicę.
+    exits:
+      wejście: pokoj_karczmy
+      południe: ulica
+    items: []
+    npcs:
+      - id: karczmarz
+        name: "Karczmarz Bolesław"
+        description: |
+          Gruby, rumiany mężczyzna w fartuchu. Wszystko widzi, ale mówi tylko tyle ile musi.
+          Zna każdego w mieście i każdą plotkę. Jest ostrożny — wie że ściany mają uszy.
+          Pyta o karawanę? Mówi mało, ale przy okazji wspomina o młodości królowej.
+          Kiedy opowie co wie o królowej, ustaw flagę pytanie_karczma.
+          NIGDY nie mów wprost o siepaczy ani o niebezpieczeństwie pytań.
+        state: "za_ladą"
+        scripted_solutions:
+          - id: historia_karczma
+            allow_talk: true
+            trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, albo o królową"
+            outcome: |
+              Bolesław odkłada kufel i ścisza głos. "Karawana? Przejeżdżali tydzień temu,
+              nocą, bez zatrzymania. Nikt nie wiedział co wiozą." Macza palec w piwie.
+              "Słuchaj... skoro pytasz o Królową — jej ojciec był okrutny jak zima.
+              Bili ją, dworska szlachta się z niej śmiała — córka pomniejszego szlachcica
+              bez grosza. Wykuła z tego serce zimne jak stal." Wyciera ladę.
+              "Tyle co wiem. Resztę pytaj kogoś innego."
+            flags: {pytanie_karczma: true}
+        creative_solutions_hint: |
+          Karczmarz wie dużo ale mówi mało. Można go przekupić, zastraszać nie ma sensu.
+          Jeśli gracz zapyta wprost i szczerze — powie co wie.
+    atmosphere: "gwar, smród piwa i dymu, ciepło po nocnym mrozie"
+
+  ulica:
+    name: "Główna Ulica Kamiennej Góry"
+    image_variants:
+      - file: "ulica_miasta"
+        condition: null
+        label: "Główna ulica"
+        prompt_extra: "główna ulica średniowiecznego miasta, kamienne domy, brukowana droga, kupcy i przechodnie, szare niebo, w tle wieża ratusza na północy i targ na południu"
+    description: |
+      Brukowana ulica w centrum Kamiennej Góry. Przechodnie spieszą się w porannych
+      sprawach. Na północy karczma, na wschodzie widać wejście do ratusza,
+      na południu słychać gwar targowiska.
+    exits:
+      północ: karczma
+      wschód: ratusz
+      południe: targowisko
+    items: []
+    npcs: []
+    atmosphere: "ruch poranny, bruk mokry od nocnego deszczu, zapach piekarni gdzieś w pobliżu"
+
+  ratusz:
+    name: "Ratusz Miejski"
+    image_variants:
+      - file: "ratusz"
+        condition: null
+        label: "Hol ratusza"
+        prompt_extra: "wnętrze średniowiecznego ratusza, kamienne ściany, nerwowy urzędnik przy biurku zawalonym dokumentami, herb miasta na ścianie, małe okna"
+    description: |
+      Wysoki hol z kamiennymi ścianami. Przy biurku zawalonym dokumentami siedzi
+      urzędnik Feliks — chudy, nerwowy, ciągle coś zapisuje.
+      Wyjście na zachód na ulicę, na północ brama do miasta.
+    exits:
+      zachód: ulica
+      północ: brama_miasta
+    items: []
+    npcs:
+      - id: urzednik
+        name: "Urzędnik Feliks"
+        description: |
+          Chudy, nerwowy urzędnik w czarnym kaftanie. Cały czas coś pisze.
+          Boi się własnego cienia — wyraźnie się stresuje gdy ktoś pyta o sprawy królewskie.
+          Pyta o karawanę? Zaprzecza, że cokolwiek wie, ale niechcący wspomina o najeźdźcach
+          i o tym jak Królowa doszła do władzy.
+          Kiedy opowie co wie o królowej, ustaw flagę pytanie_ratusz.
+        state: "przy_biurku"
+        scripted_solutions:
+          - id: historia_ratusz
+            allow_talk: true
+            trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, o królową lub o sprawy królewskie"
+            outcome: |
+              Feliks nerwowo odkłada pióro. "Karawana? Nie wiem nic o żadnej karawanie.
+              To sprawy królewskie — nie moja kompetencja." Rozgląda się po sali.
+              "Ale... skoro pytasz. Dziesięć lat temu flota najeźdźców z północy.
+              Nasze wojska klęskły, stary król uciekł. Wszystko się waliło."
+              Ścisza głos. "Miała wtedy dwadzieścia lat. Zebrała resztki wojska,
+              odparła najazd sama. Weszła do stolicy jako zbawczyni. Lud sam dał jej koronę."
+              Wraca do dokumentów. "I tyle historii. Idź pan stąd."
+            flags: {pytanie_ratusz: true}
+        creative_solutions_hint: |
+          Urzędnik jest tchórzliwy ale uczciwy. Zastraszanie nie działa — jest już wystraszony.
+          Szczere pytanie w cztery oczy to najlepsze podejście.
+    atmosphere: "zimny kamień, skrobanie pióra, zapach wosku i starych dokumentów"
+
+  targowisko:
+    name: "Targowisko"
+    image_variants:
+      - file: "targowisko"
+        condition: null
+        label: "Targowisko"
+        prompt_extra: "zatłoczone średniowieczne targowisko, stragany z warzywami i towarami, hałas, tłum, przekupka za stoiskiem z ziołami, szare niebo"
+    description: |
+      Hałaśliwe targowisko pełne straganów. Woń warzyw, skóry i dymu.
+      Między kramami przeciska się tłum. Przy straganie z ziołami stoi
+      przekupka Jadwiga — stara, chuda kobieta o bystry oczach.
+      Na północ ulica.
+    exits:
+      północ: ulica
+    items: []
+    npcs:
+      - id: przekupka
+        name: "Przekupka Jadwiga"
+        description: |
+          Stara, chuda kobieta z ostrymi oczami. Zna wszystkie plotki miasta.
+          Mówi dużo ale nagle się urywa gdy dotkniesz drażliwego tematu.
+          Pyta o karawanę? Wspomni coś o nocnych transportach, ale przy okazji
+          opowie o buncie chłopskim po którym królowa się zmieniła.
+          Kiedy opowie co wie o królowej, ustaw flagę pytanie_targowisko.
+        state: "za_stoiskiem"
+        scripted_solutions:
+          - id: historia_targowisko
+            allow_talk: true
+            trigger: "gracz pyta o karawanę królewską, o zaginiony żołd lub o królową"
+            outcome: |
+              Jadwiga pochyla się nad stoiskiem i ścisza głos. "Karawana? Słyszałam
+              że ostatnio jeżdżą nocami tylko. Coś wiozą czego nie chcą pokazywać."
+              Macha ręką. "Ale pytasz o Królową? Trzy lata po tym jak nas uratowała —
+              chłopi wstali. Podatki, głód, niesprawiedliwość. Wiesz co zrobiła
+              ta co ich uratowała?" Milknie. "Rozbiła ich. Doszczętnie. Powiedziała
+              że czarną niewdzięcznością jej się odwdzięczyli." Cofa się. "Tyle mówię.
+              Reszty nie pytaj — mam dzieci do wykarmienia."
+            flags: {pytanie_targowisko: true}
+        creative_solutions_hint: |
+          Jadwiga boi się ale jest gadatliwa. Można ją zachęcić drobnym zakupem
+          lub po prostu słuchając uważnie. Zastraszanie zamknie jej usta.
+    atmosphere: "hałas, tłum, woń targowiska, szara codzienna bieda"
+
+  brama_miasta:
+    name: "Brama Miejska"
+    image_variants:
+      - file: "brama_miasta"
+        condition: null
+        label: "Brama miejska"
+        prompt_extra: "masywna kamienna brama średniowiecznego miasta, dwóch strażników w zbrojach z herbem królowej, portcullis, widok na drogę wyjeżdżającą z miasta"
+    description: |
+      Masywna kamienna brama z opuszczoną kratą. Dwóch strażników w zbrojach
+      z herbem królowej pilnuje wejścia. Patrzą na ciebie bez wyrazu.
+      Na południe ratusz i miasto.
+    exits:
+      południe: ratusz
+    items: []
+    npcs:
+      - id: straznik_bramy
+        name: "Strażnik Bramy"
+        description: |
+          Wysokiej postury strażnik w ciężkiej zbroi z herbem królowej.
+          Mówi krótko, patrzy uważnie. Wyraźnie szkolony żeby nic nie mówić.
+          Pyta o karawanę? Odetnie się ostro. Ale coś jednak powie o obecnych rządach —
+          jakby mimo woli.
+          Kiedy powie co wie, ustaw flagę pytanie_brama.
+          WAŻNE: strażnik jest lojalny wobec królowej — nie mówi źle wprost,
+          ale między słowami słychać strach.
+        state: "na_posterunku"
+        scripted_solutions:
+          - id: historia_brama
+            allow_talk: true
+            trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, o królową lub o wyjazd z miasta"
+            outcome: |
+              Strażnik patrzy na ciebie długo zanim odpowie. "Karawana królewska
+              to tajne sprawy. Nie pytaj." Pauza. "I tak w ogóle — za dużo ludzi
+              ostatnio pyta o nie swoje sprawy. Znikają potem."
+              Odwraca się przodem do bramy. Mruczy jakby do siebie:
+              "Podatki co rok wyższe. Wioski które nie płacą — zostają same ściany.
+              A kto coś powie..." Urywa. "Idź sobie. I nie pytaj o karawany."
+            flags: {pytanie_brama: true}
+        creative_solutions_hint: |
+          Strażnik jest lojalny ale ma sumienie. Przekupstwo nie wchodzi w grę.
+          Bezpośrednie pytanie przyniesie krótką odpowiedź — ale wystarczającą.
+    atmosphere: "zimny wiatr, szczęk żelaza, napięcie — to ostatnia granica między miastem a światem"
+
+  transport_wiezniarski:
+    name: "Wóz Więzienny"
+    image_variants:
+      - file: "transport_wiezniarski"
+        condition: null
+        label: "Wóz więzienny w lesie"
+        prompt_extra: "drewniany wóz więzienny jadący przez ciemny las, kraty, ręce związane liną, przez szpary widać drzewa i zmierzch, woźnica z przodu"
+    description: |
+      Leżysz skrępowany na dnie drewnianego wozu z kratami. Przez szczeliny
+      widać ciemny las po obu stronach drogi. Wóz skrzypi i podskakuje na korzeniach.
+      Twój ekwipunek gdzieś zniknął. Ręce masz związane — ale lina nie jest zbyt mocna.
+      Słyszysz jak woźnica nuci pod nosem. Nie zwraca na ciebie uwagi.
+    exits: {}
+    items:
+      - id: lina_wiezniarska
+        name: "lina na rękach"
+        hint: "lina wiążąca twoje ręce"
+        description: "Prosta konopna lina. Supły są niedbałe — ktoś się spieszył. Przy odrobinie wysiłku można ją rozwiązać lub przepiłować o kant kraty."
+        takeable: false
+        examine_sets_flag: {lina_zbadana: true}
+        set_on: examine
+      - id: krata_wozu
+        name: "krata wozu"
+        hint: "drewniana krata boczna wozu"
+        description: "Stare drewno, spróchniałe w rogach. Mocne uderzenie i krata puści — ale hałas obudzi woźnicę."
+        takeable: false
+        examine_sets_flag: {krata_zbadana: true}
+        set_on: examine
+    npcs:
+      - id: ucieczka_woz
+        name: "Okazja do ucieczki"
+        description: |
+          Wóz zwalnia na ostrym zakręcie w lesie. Krata jest spróchniała.
+          To jedyna szansa — teraz albo nigdy.
+          Gdy gracz podejmie próbę ucieczki przez kratę lub rozwiąże linę i wyskoczy,
+          opisz dynamiczną ucieczkę i zakończ lokację.
+          Gracz ląduje w lesie — zaczyna się właściwa przygoda.
+        state: "w_drodze"
+        scripted_solutions:
+          - id: ucieczka
+            trigger: "gracz próbuje uciec — wyważyć kratę, rozwiązać linę, wyskoczyć z wozu, uciec"
+            outcome: |
+              Szarpiesz linę o ostry kant kraty. Konopie puszczają po chwili.
+              Wolne ręce. Czekasz na zakręt — wóz zwalnia. Teraz.
+              Kopiesz spróchniałą kratę z całej siły. Wylatuje z hukiem.
+              Woźnica krzyczy, ale już lecisz w ciemność lasu.
+              Lądując między korzeniami, słyszysz jak wóz zatrzymuje się daleko za tobą.
+              Jesteś wolny. Bez ekwipunku, bez broni. Sam w lesie przed zamkiem Królowej.
+            flags: {uciekl_z_transportu: true, transport_opuszczony: true}
+            move_to: las
+        creative_solutions_hint: |
+          Każda próba ucieczki powinna się udać — to punkt fabularny, nie wyzwanie.
+          Gracz MA uciec. Opisz to dynamicznie.
+    atmosphere: "skrzyp drewna, zapach lasu, strach i determinacja"

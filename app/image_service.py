@@ -3,14 +3,17 @@ import base64
 import httpx
 from pathlib import Path
 
-from app.config import XAI_API_KEY, IMAGE_STYLE
+from app.config import XAI_API_KEY, IMAGE_STYLE, get_game_dir
 
-IMG_DIR = Path(__file__).parent.parent / "frontend" / "img" / "locations"
-IMG_DIR.mkdir(parents=True, exist_ok=True)
+
+def _img_dir() -> Path:
+    d = get_game_dir() / "img"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def image_path(file_id: str) -> Path:
-    return IMG_DIR / f"{file_id}.png"
+    return _img_dir() / f"{file_id}.png"
 
 
 def _check_image_condition(cond, flags: dict, inventory: list) -> bool:

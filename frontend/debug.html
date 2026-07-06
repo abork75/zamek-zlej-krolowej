@@ -117,6 +117,12 @@
 
     #refresh-info { font-size: 0.6rem; color: #2a2010; }
 
+    #game-selector { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    #game-select { background: #0d0900; border: 1px solid #5a3a10; color: #d4a843; padding: 4px 8px; font-family: 'Courier New', monospace; font-size: 0.7rem; border-radius: 2px; cursor: pointer; flex: 1; }
+    #game-switch-btn { background: #1a0800; border: 1px solid #8a4a00; color: #d4a843; padding: 4px 10px; font-family: 'Courier New', monospace; font-size: 0.7rem; border-radius: 2px; cursor: pointer; white-space: nowrap; }
+    #game-switch-btn:hover { background: #2a1400; }
+    #active-game-badge { font-size: 0.62rem; color: #6a9a9a; }
+
     .legend { display: flex; flex-direction: column; gap: 4px; font-size: 0.7rem; }
     .legend-row { display: flex; align-items: center; gap: 6px; }
     .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
@@ -177,6 +183,14 @@
 
   <!-- KOLUMNA 2: Stan gry -->
   <div id="info-panel">
+    <div class="panel-box">
+      <h2>Aktywna gra</h2>
+      <div id="game-selector">
+        <select id="game-select"></select>
+        <button id="game-switch-btn">Załaduj</button>
+      </div>
+      <div id="active-game-badge"></div>
+    </div>
     <div class="panel-box">
       <h2>Lokacja gracza</h2>
       <div class="location-badge" id="current-loc">—</div>
@@ -241,12 +255,40 @@ const NODE_POS = new Proxy({}, {
 
 async function loadMapConfig() {
   try {
-    const res = await fetch('/static/map_config.json');
+    const res = await fetch('/api/map-config');
     const cfg = await res.json();
-    NODE_POS_LAS    = cfg.levels.las.nodes;
-    NODE_POS_MIASTO = cfg.levels.miasto.nodes;
+    NODE_POS_LAS    = cfg.levels?.las?.nodes    || {};
+    NODE_POS_MIASTO = cfg.levels?.miasto?.nodes || {};
   } catch(e) {
-    console.error('Błąd ładowania map_config.json:', e);
+    console.error('Błąd ładowania map-config:', e);
+  }
+}
+
+async function loadGames() {
+  const res = await fetch('/api/debug/games');
+  const data = await res.json();
+  const sel = document.getElementById('game-select');
+  sel.innerHTML = data.games.map(g =>
+    `<option value="${g}" ${g === data.active ? 'selected' : ''}>${g}</option>`
+  ).join('');
+  document.getElementById('active-game-badge').textContent = `aktywna: ${data.active}`;
+}
+
+async function switchGame() {
+  const name = document.getElementById('game-select').value;
+  const res = await fetch('/api/debug/set-game', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ game: name }),
+  });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('active-game-badge').textContent = `aktywna: ${data.active}`;
+    addLog(`🎮 Załadowano grę: <span class="log-flag">${data.active}</span>`);
+    await loadMapConfig();
+    scale = 1; panX = 0; panY = 0;
+    await refresh();
+    updateVariants();
   }
 }
 
@@ -560,6 +602,9 @@ async function updateSolutions() {
   `).join('');
 }
 
+document.getElementById('game-switch-btn').addEventListener('click', switchGame);
+
+loadGames();
 loadMapConfig().then(() => {
   updateVariants();
   updateSolutions();

@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 
 from app.game_engine import load_world, load_state, save_state, reset_state, build_gm_prompt, check_condition, resolve_exits, resolve_description, find_item, find_items, _item_visible, check_world_events, apply_city_arrest_mechanic
-from app.config import XAI_API_KEY, GROK_MODEL, GROK_VOICE, IMAGE_STYLES
+from app.config import XAI_API_KEY, GROK_MODEL, GROK_VOICE, IMAGE_STYLES, get_game_dir, get_active_game, set_active_game, list_games
 from app.image_service import generate_image, generate_image_i2i, image_path, resolve_variant, build_image_log, _find_base_variant
 
 app = FastAPI()
@@ -32,7 +32,7 @@ log = logging.getLogger("game")
 
 @app.on_event("startup")
 async def on_startup():
-    log.info(f"[SERVER START]")
+    log.info(f"[SERVER START] active game: {get_active_game()}")
 
 FRONTEND = Path(__file__).parent.parent / "frontend"
 app.mount("/static", StaticFiles(directory=str(FRONTEND)), name="static")
@@ -136,6 +136,29 @@ def debug_images():
 @app.get("/api/image-styles")
 def image_styles():
     return IMAGE_STYLES
+
+
+@app.get("/api/map-config")
+def map_config():
+    cfg_file = get_game_dir() / "map_config.json"
+    if not cfg_file.exists():
+        return JSONResponse({"levels": {}})
+    import json as _json
+    return _json.loads(cfg_file.read_text(encoding="utf-8"))
+
+
+@app.get("/api/debug/games")
+def debug_games():
+    return {"active": get_active_game(), "games": list_games()}
+
+
+@app.post("/api/debug/set-game")
+def debug_set_game(body: dict):
+    name = body.get("game", "")
+    if not set_active_game(name):
+        return JSONResponse({"error": f"Gra '{name}' nie istnieje"}, status_code=404)
+    log.info(f"[GAME SWITCH] → {name}")
+    return {"ok": True, "active": name}
 
 
 @app.get("/debug")
