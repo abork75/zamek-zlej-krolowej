@@ -2,6 +2,14 @@ title: "Zamek Królowej"
 
 start_location: "pokoj_karczmy"
 
+start_locations:
+  - id: las
+    label: "🌲 Las"
+    description: "Zacznij przygodę w mrocznym lesie"
+  - id: pokoj_karczmy
+    label: "🏘️ Miasto"
+    description: "Zacznij w mieście — śledź karawanę"
+
 intro_pokoj_karczmy: |
   Budzisz się w małym pokoju na górze karczmy. Głowa boli — za dużo wczoraj wypiłeś.
   Przez okno widać szare niebo nad miastem Kamienna Góra.

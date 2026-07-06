@@ -253,7 +253,10 @@ button:hover { background: #3a2200; }
 
 #voice-status { font-size: 0.75rem; color: #5a4a30; flex: 1; }
 
-#reset-btn { font-size: 0.75rem; color: #5a4a30; border-color: #2a2010; margin-left: auto; }
+#start-buttons-area { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.start-label-test { font-size: 0.62rem; color: #3a3020; white-space: nowrap; }
+.start-loc-btn { font-size: 0.72rem; color: #7a6a40; border-color: #2a2010; padding: 4px 10px; }
+.start-loc-btn:hover { color: #d4a843; border-color: #5a3a10; }
 
 /* ── PRAWA KOLUMNA ── */
 #right-col {

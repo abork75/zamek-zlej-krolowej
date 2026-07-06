@@ -257,6 +257,12 @@ def get_state():
     return {"state": enrich_state(state, world), "narrative": last_narrative}
 
 
+@app.get("/api/start-locations")
+def start_locations():
+    world = load_world()
+    return world.get("start_locations", [])
+
+
 @app.post("/api/reset")
 def reset(start: str | None = None):
     world = load_world()

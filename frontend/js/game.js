@@ -213,16 +213,30 @@ async function startNewGame(startLocation = null) {
   addMessage(data.intro, 'gm');
 }
 
-document.getElementById('reset-las-btn').addEventListener('click', () => {
-  if (confirm('Zacząć nową grę w Lesie? Cały postęp zostanie utracony.')) startNewGame('las');
-});
-document.getElementById('reset-miasto-btn').addEventListener('click', () => {
-  if (confirm('Zacząć nową grę w Mieście? Cały postęp zostanie utracony.')) startNewGame('pokoj_karczmy');
-});
+async function loadStartButtons() {
+  try {
+    const res = await fetch('/api/start-locations');
+    const locations = await res.json();
+    const container = document.getElementById('start-buttons');
+    container.innerHTML = locations.map(loc =>
+      `<button class="start-loc-btn" data-id="${loc.id}" title="${loc.description || ''}">${loc.label}</button>`
+    ).join('');
+    container.querySelectorAll('.start-loc-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (confirm(`Zacząć nową grę (${btn.textContent})? Cały postęp zostanie utracony.`))
+          startNewGame(btn.dataset.id);
+      });
+    });
+  } catch(e) {
+    console.error('Błąd ładowania startów:', e);
+  }
+}
+
 document.getElementById('ending-restart').addEventListener('click', () => startNewGame());
 
 // Start — wczytaj aktualny stan bez resetowania
 (async () => {
+  await loadStartButtons();
   try {
     const res = await fetch('/api/state');
     const data = await res.json();
