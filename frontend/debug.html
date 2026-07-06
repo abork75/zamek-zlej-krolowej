@@ -230,38 +230,25 @@
 </div>
 
 <script>
-const NODE_POS_LAS = {
-  las:                 { x: 0.45, y: 0.78 },
-  polana:              { x: 0.64, y: 0.78 },
-  sciezka_lesna:       { x: 0.80, y: 0.78 },
-  most:                { x: 0.45, y: 0.60 },
-  zamek:               { x: 0.45, y: 0.42 },
-  klatka_wieznia:      { x: 0.64, y: 0.42 },
-  dziedziniec_zamku:   { x: 0.45, y: 0.24 },
-  sala_tronowa:        { x: 0.45, y: 0.05 },
-  korytarz:            { x: 0.45, y: 0.12 },
-  loch:                { x: 0.62, y: 0.18 },
-  kanaly:              { x: 0.78, y: 0.24 },
-  wnetrze_zamku:       { x: 0.45, y: 0.06 },
-  domek_pustelnika:    { x: 0.22, y: 0.78 },
-  wnetrze_hatki:       { x: 0.22, y: 0.93 },
-};
-
-const NODE_POS_MIASTO = {
-  pokoj_karczmy:         { x: 0.28, y: 0.08 },
-  karczma:               { x: 0.28, y: 0.28 },
-  ulica:                 { x: 0.28, y: 0.52 },
-  targowisko:            { x: 0.28, y: 0.76 },
-  ratusz:                { x: 0.62, y: 0.52 },
-  brama_miasta:          { x: 0.62, y: 0.28 },
-  transport_wiezniarski: { x: 0.85, y: 0.76 },
-};
+let NODE_POS_LAS = {};
+let NODE_POS_MIASTO = {};
 
 const NODE_POS = new Proxy({}, {
   get(_, key) {
     return activeTab === 'miasto' ? NODE_POS_MIASTO[key] : NODE_POS_LAS[key];
   }
 });
+
+async function loadMapConfig() {
+  try {
+    const res = await fetch('/static/map_config.json');
+    const cfg = await res.json();
+    NODE_POS_LAS    = cfg.levels.las.nodes;
+    NODE_POS_MIASTO = cfg.levels.miasto.nodes;
+  } catch(e) {
+    console.error('Błąd ładowania map_config.json:', e);
+  }
+}
 
 // ── GRAF ──────────────────────────────────────────
 const canvas = document.getElementById('graph-canvas');
@@ -573,11 +560,13 @@ async function updateSolutions() {
   `).join('');
 }
 
-updateVariants();
-updateSolutions();
-refresh();
-setInterval(refresh, 2000);
-setInterval(updateSolutions, 2000);
+loadMapConfig().then(() => {
+  updateVariants();
+  updateSolutions();
+  refresh();
+  setInterval(refresh, 2000);
+  setInterval(updateSolutions, 2000);
+});
 </script>
 </body>
 </html>
