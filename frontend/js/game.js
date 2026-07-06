@@ -1,4 +1,5 @@
 const messagesEl = document.getElementById('messages');
+const narrativeBox = document.getElementById('narrative-box');
 const textInput = document.getElementById('text-input');
 const sendBtn = document.getElementById('send-btn');
 const resetBtn = document.getElementById('reset-btn');
@@ -12,7 +13,7 @@ function addMessage(text, type = 'gm') {
   div.textContent = text;
   messagesEl.appendChild(div);
   requestAnimationFrame(() => {
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    narrativeBox.scrollTop = narrativeBox.scrollHeight;
   });
 }
 
@@ -200,19 +201,25 @@ async function sendMessage(text) {
 sendBtn.addEventListener('click', () => sendMessage(textInput.value));
 textInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(textInput.value); });
 
-async function startNewGame() {
+async function startNewGame(startLocation = null) {
   messagesEl.innerHTML = '';
   document.getElementById('ending-overlay').style.display = 'none';
   textInput.disabled = false;
   sendBtn.disabled = false;
-  const res = await fetch('/api/reset', { method: 'POST' });
+  const url = startLocation ? `/api/reset?start=${startLocation}` : '/api/reset';
+  const res = await fetch(url, { method: 'POST' });
   const data = await res.json();
   updateStatus(data.state);
   addMessage(data.intro, 'gm');
 }
 
-resetBtn.addEventListener('click', startNewGame);
-document.getElementById('ending-restart').addEventListener('click', startNewGame);
+document.getElementById('reset-las-btn').addEventListener('click', () => {
+  if (confirm('Zacząć nową grę w Lesie? Cały postęp zostanie utracony.')) startNewGame('las');
+});
+document.getElementById('reset-miasto-btn').addEventListener('click', () => {
+  if (confirm('Zacząć nową grę w Mieście? Cały postęp zostanie utracony.')) startNewGame('pokoj_karczmy');
+});
+document.getElementById('ending-restart').addEventListener('click', () => startNewGame());
 
 // Start — wczytaj aktualny stan bez resetowania
 (async () => {

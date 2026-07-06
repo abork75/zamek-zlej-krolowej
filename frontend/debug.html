@@ -40,6 +40,14 @@
       overflow: hidden;
     }
 
+    .tab-bar { display: flex; gap: 4px; margin-bottom: 6px; }
+    .tab-btn {
+      flex: 1; padding: 4px 0; font-family: 'Courier New', monospace; font-size: 0.68rem;
+      letter-spacing: 1px; cursor: pointer; border-radius: 2px;
+      background: #0d0900; border: 1px solid #3a2e1e; color: #5a4a30;
+    }
+    .tab-btn.active { background: #1a1000; border-color: #d4a843; color: #d4a843; }
+
     .panel-box {
       border: 1px solid #3a2e1e;
       border-radius: 4px;
@@ -120,6 +128,42 @@
     #teleport-btn:hover { background: #2a1040; border-color: #9a60cc; }
     .loc-section.focused .loc-title { color: #6adfdf; }
     .loc-section:not(.focused) { opacity: 0.65; }
+
+    /* KOLUMNA 4: Scripted solutions */
+    #solutions-panel {
+      width: 360px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .sol-npc-block { margin-bottom: 14px; }
+    .sol-npc-title { font-size: 0.7rem; color: #6adfdf; margin-bottom: 2px; letter-spacing: 1px; }
+    .sol-npc-loc   { font-size: 0.62rem; color: #5a4a30; margin-bottom: 5px; }
+    .sol-npc-state { font-size: 0.62rem; }
+
+    .sol-row {
+      display: grid;
+      grid-template-columns: 14px 1fr;
+      gap: 5px;
+      align-items: start;
+      padding: 4px 6px;
+      border-radius: 2px;
+      margin-bottom: 3px;
+      font-size: 0.68rem;
+      border: 1px solid transparent;
+    }
+    .sol-row.pass  { background: #0d1a0d; border-color: #2a5a2a; }
+    .sol-row.block { background: #1a0d0d; border-color: #5a2020; opacity: 0.8; }
+    .sol-check     { font-size: 0.8rem; margin-top: 1px; }
+    .sol-check.ok  { color: #4ac84a; }
+    .sol-check.no  { color: #c84a4a; }
+    .sol-id        { color: #d4a843; font-size: 0.65rem; }
+    .sol-trigger   { color: #a09080; font-size: 0.63rem; font-style: italic; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sol-reason    { color: #c86060; font-size: 0.62rem; margin-top: 2px; }
+    .sol-flags     { color: #6090c0; font-size: 0.62rem; margin-top: 1px; }
   </style>
 </head>
 <body>
@@ -163,6 +207,10 @@
   <div id="image-panel">
     <div class="panel-box scrollable">
       <h2>Warianty obrazków <span id="focused-badge" class="focused-badge"></span> <button id="teleport-btn" style="display:none"></button></h2>
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-las" onclick="switchTab('las')">🌲 LAS</button>
+        <button class="tab-btn" id="tab-miasto" onclick="switchTab('miasto')">🏘️ MIASTO</button>
+      </div>
       <div id="variants-table"></div>
     </div>
     <div class="panel-box scrollable">
@@ -171,12 +219,21 @@
     </div>
   </div>
 
+  <!-- KOLUMNA 4: Scripted solutions -->
+  <div id="solutions-panel">
+    <div class="panel-box scrollable">
+      <h2>Scripted solutions — aktualny stan</h2>
+      <div id="solutions-table"><span style="color:#3a2e1e">Ładowanie…</span></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-const NODE_POS = {
+const NODE_POS_LAS = {
   las:                 { x: 0.45, y: 0.78 },
   polana:              { x: 0.64, y: 0.78 },
+  sciezka_lesna:       { x: 0.80, y: 0.78 },
   most:                { x: 0.45, y: 0.60 },
   zamek:               { x: 0.45, y: 0.42 },
   klatka_wieznia:      { x: 0.64, y: 0.42 },
@@ -189,6 +246,22 @@ const NODE_POS = {
   domek_pustelnika:    { x: 0.22, y: 0.78 },
   wnetrze_hatki:       { x: 0.22, y: 0.93 },
 };
+
+const NODE_POS_MIASTO = {
+  pokoj_karczmy:         { x: 0.28, y: 0.08 },
+  karczma:               { x: 0.28, y: 0.28 },
+  ulica:                 { x: 0.28, y: 0.52 },
+  targowisko:            { x: 0.28, y: 0.76 },
+  ratusz:                { x: 0.62, y: 0.52 },
+  brama_miasta:          { x: 0.62, y: 0.28 },
+  transport_wiezniarski: { x: 0.85, y: 0.76 },
+};
+
+const NODE_POS = new Proxy({}, {
+  get(_, key) {
+    return activeTab === 'miasto' ? NODE_POS_MIASTO[key] : NODE_POS_LAS[key];
+  }
+});
 
 // ── GRAF ──────────────────────────────────────────
 const canvas = document.getElementById('graph-canvas');
@@ -293,7 +366,8 @@ function draw(data) {
 
   const pos = {};
   data.nodes.forEach(n => {
-    const p = NODE_POS[n.id] || { x: 0.5, y: 0.5 };
+    const p = NODE_POS[n.id];
+    if (!p) return;
     pos[n.id] = { x: p.x * W, y: p.y * H, label: n.label, current: n.current };
   });
 
@@ -363,12 +437,23 @@ function updateInfo(data) {
 let prevFlags = null;
 const eventLog = [];
 
-async function updateVariants() {
-  const res = await fetch('/api/debug/images');
-  const locs = await res.json();
-  const el = document.getElementById('variants-table');
+const MIASTO_LOCS = new Set(['pokoj_karczmy','karczma','ulica','ratusz','targowisko','zaulek','brama_miasta','transport_wiezniarski']);
+let activeTab = 'las';
+let lastVariantsData = null;
 
-  el.innerHTML = locs.map(loc => `
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-las').classList.toggle('active', tab === 'las');
+  document.getElementById('tab-miasto').classList.toggle('active', tab === 'miasto');
+  scale = 1; panX = 0; panY = 0;
+  if (lastData) draw(lastData);
+  if (lastVariantsData) renderVariants(lastVariantsData);
+}
+
+function renderVariants(locs) {
+  const el = document.getElementById('variants-table');
+  const filtered = locs.filter(loc => activeTab === 'miasto' ? MIASTO_LOCS.has(loc.loc_id) : !MIASTO_LOCS.has(loc.loc_id));
+  el.innerHTML = filtered.map(loc => `
     <div class="loc-section" data-loc-id="${loc.loc_id}">
       <div class="loc-title">📍 ${loc.loc_name}</div>
       ${loc.variants.map(v => `
@@ -387,6 +472,13 @@ async function updateVariants() {
       `).join('')}
     </div>
   `).join('');
+  if (focusedNode) applyFocus();
+}
+
+async function updateVariants() {
+  const res = await fetch('/api/debug/images');
+  lastVariantsData = await res.json();
+  renderVariants(lastVariantsData);
 }
 
 async function regen(locId, fileId, btn) {
@@ -456,9 +548,36 @@ document.getElementById('reset-game-btn').addEventListener('click', async () => 
   updateVariants();
 });
 
+// ── SCRIPTED SOLUTIONS ────────────────────────────
+async function updateSolutions() {
+  const res = await fetch('/api/debug/solutions');
+  const npcs = await res.json();
+  const el = document.getElementById('solutions-table');
+  if (!npcs.length) { el.innerHTML = '<span style="color:#3a2e1e">Brak NPC</span>'; return; }
+  el.innerHTML = npcs.map(npc => `
+    <div class="sol-npc-block">
+      <div class="sol-npc-title">⚔ ${npc.npc_name}</div>
+      <div class="sol-npc-loc">${npc.loc_name} · stan: <span style="color:#a0c080">${npc.npc_state}</span></div>
+      ${npc.solutions.map(s => `
+        <div class="sol-row ${s.passes ? 'pass' : 'block'}">
+          <span class="sol-check ${s.passes ? 'ok' : 'no'}">${s.passes ? '✓' : '✗'}</span>
+          <div>
+            <div class="sol-id">${s.id}</div>
+            <div class="sol-trigger">${s.trigger}</div>
+            ${s.reason ? `<div class="sol-reason">⛔ ${s.reason}</div>` : ''}
+            ${s.flags && Object.keys(s.flags).length ? `<div class="sol-flags">→ ${JSON.stringify(s.flags)}</div>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
 updateVariants();
+updateSolutions();
 refresh();
 setInterval(refresh, 2000);
+setInterval(updateSolutions, 2000);
 </script>
 </body>
 </html>

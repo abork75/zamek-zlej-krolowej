@@ -19,16 +19,51 @@ def save_state(state: dict) -> None:
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def reset_state() -> dict:
+def reset_state(world: dict | None = None) -> dict:
+    if world is None:
+        world = load_world()
+    start = world.get("start_location", "las")
+    initial_flags = {"troll_state": "blokuje_most", "straznik_state": "blokuje_przejscie", "niedzwiedz_state": "blokuje_sciezke", "pora_dnia": "dzień"}
     state = {
-        "current_location": "las",
+        "current_location": start,
         "inventory": [],
-        "flags": {"troll_state": "blokuje_most", "straznik_state": "blokuje_przejscie", "pora_dnia": "dzień"},
+        "flags": initial_flags,
         "history": [],
         "turn": 0,
     }
     save_state(state)
     return state
+
+
+def check_world_events(state: dict, world: dict) -> dict | None:
+    """
+    Sprawdza czy jakiś event z sekcji events w world.yaml powinien się odpalić.
+    Zwraca event dict lub None.
+    """
+    for event in world.get("events", []):
+        cond = event.get("condition")
+        if not check_condition(cond, state["flags"]):
+            continue
+        trigger_locs = event.get("trigger_locations", [])
+        if state["current_location"] not in trigger_locs:
+            continue
+        return event
+    return None
+
+
+def apply_city_arrest_mechanic(state: dict, world: dict) -> None:
+    """
+    Sprawdza czy próg zebranych informacji w mieście został osiągnięty.
+    Jeśli tak — ustawia flagę siepaczy.
+    """
+    mechanic = world.get("mechanics", {}).get("city_arrest")
+    if not mechanic:
+        return
+    if state["flags"].get(mechanic["sets_flag"]):
+        return  # już ustawione
+    count = sum(1 for f in mechanic["track_flags"] if state["flags"].get(f))
+    if count >= mechanic["threshold"]:
+        state["flags"][mechanic["sets_flag"]] = True
 
 
 def check_condition(req: dict, flags: dict) -> bool:
@@ -73,18 +108,29 @@ def resolve_exits(location: dict, flags: dict) -> tuple[dict, list[str]]:
     return accessible, blocked_msgs
 
 
-def find_items(target: str, location: dict) -> list[dict]:
+def _item_visible(item: dict, flags: dict, inventory: list | None = None) -> bool:
+    """Zwraca False jeśli item ma hidden_when i warunek jest spełniony, lub jeśli item jest już w ekwipunku."""
+    if inventory and item.get("takeable") and item.get("name") in inventory:
+        return False
+    hw = item.get("hidden_when")
+    if not hw:
+        return True
+    return not check_condition(hw, flags)
+
+
+def find_items(target: str, location: dict, flags: dict | None = None, inventory: list | None = None) -> list[dict]:
     """Zwraca itemy pasujące do target — najpierw exact match po id, potem fuzzy name/hint."""
     if not target:
         return []
     t = target.lower()
+    visible = [i for i in location.get("items", []) if _item_visible(i, flags or {}, inventory)]
     # Exact match po id (klasyfikator zwraca item_id)
-    by_id = [item for item in location.get("items", []) if item.get("id", "").lower() == t]
+    by_id = [item for item in visible if item.get("id", "").lower() == t]
     if by_id:
         return by_id
     # Fuzzy match po name i hint
     return [
-        item for item in location.get("items", [])
+        item for item in visible
         if t in item["name"].lower()
         or t in item.get("hint", "").lower()
         or item["name"].lower() in t
@@ -92,13 +138,13 @@ def find_items(target: str, location: dict) -> list[dict]:
     ]
 
 
-def find_item(target: str, location: dict) -> dict | None:
+def find_item(target: str, location: dict, flags: dict | None = None, inventory: list | None = None) -> dict | None:
     """Zwraca pierwszy pasujący item (dla TAKE)."""
-    results = find_items(target, location)
+    results = find_items(target, location, flags, inventory)
     return results[0] if results else None
 
 
-def build_gm_prompt(player_input: str, state: dict, world: dict, intent_context: str = "") -> str:
+def build_gm_prompt(player_input: str, state: dict, world: dict, intent_context: str = "", scripted_fired: bool = False) -> str:
     loc_id = state["current_location"]
     location = world["locations"][loc_id]
     inventory = state["inventory"] if state["inventory"] else ["(brak)"]
@@ -114,10 +160,17 @@ def build_gm_prompt(player_input: str, state: dict, world: dict, intent_context:
     npc_context = ""
     for npc in location.get("npcs", []):
         npc_current_state = flags.get(f"{npc['id']}_state", npc.get("state", ""))
-        scripted = "\n".join(
-            f"  - TRIGGER: {s['trigger']}\n    OUTCOME (użyj DOSŁOWNIE jeśli trigger pasuje, nie parafrazuj): {s['outcome'].strip()}\n    [flags_update: {s.get('flags', {})}]"
-            for s in npc.get("scripted_solutions", [])
-        )
+        if scripted_fired:
+            scripted = "\n".join(
+                f"  - TRIGGER: {s['trigger']}\n    OUTCOME (użyj DOSŁOWNIE jeśli trigger pasuje, nie parafrazuj): {s['outcome'].strip()}\n    [flags_update: {s.get('flags', {})}]"
+                for s in npc.get("scripted_solutions", [])
+            )
+        else:
+            scripted = ("(WAŻNE: system gry sprawdził akcję gracza — żaden trigger nie pasował. "
+                        "NPC pozostaje w aktualnym stanie i NADAL BLOKUJE DROGĘ. "
+                        "NIE opisuj że gracz przeszedł, przeskoczył, wymknął się lub ominął NPC. "
+                        "NIE opisuj że NPC ustąpił, cofnął się lub zniknął. "
+                        "Opisz nieudaną próbę i że droga jest nadal zablokowana.)")
         creative = npc.get("creative_solutions_hint", "")
         npc_context += f"""
 NPC: {npc['name']} (AKTUALNY STAN: {npc_current_state})
@@ -130,7 +183,7 @@ Wskazówka dla kreatywnych rozwiązań:
 
     hint_groups: dict[str, list[str]] = {}
     mechanic_lines = []
-    for i in location.get("items", []):
+    for i in [x for x in location.get("items", []) if _item_visible(x, flags, state.get("inventory", []))]:
         hint = i.get("hint", i["name"])
         hint_groups.setdefault(hint, []).append(i["name"])
         for flag, expected in i.get("examine_sets_flag", {}).items():
@@ -161,6 +214,19 @@ Ekwipunek gracza: {", ".join(inventory)}
 Pora dnia: {flags.get('pora_dnia', 'dzień')}
 
 {npc_context}
+
+=== BOHATER (ABSOLUTNE OGRANICZENIA) ===
+Gracz wciela się w wojownika w skórzanej zbroi. Dozwolone: walka fizyczna, wyważanie, wspinanie, ukrywanie się, przekupstwo, blef, zastraszanie, negocjacje.
+ZABRONIONE — jeśli gracz próbuje poniższego, odpowiedz TYLKO: "Nie jesteś czarownikiem." i nic więcej:
+- czary, zaklęcia, magia wszelkiego rodzaju
+- przywoływanie przedmiotów, złota, broni z niczego
+- telekineza, latanie, niewidzialność, nadludzkie zdolności
+- wskrzeszanie, przywoływanie duchów lub demonów
+
+=== NIEPRECYZYJNE KOMENDY ===
+- "atakuj/uderz/walcz" bez wskazania czym → bohater atakuje gołymi rękami. Opisz realistycznie — gołe pięści przeciwko uzbrojonemu/silnemu wrogowi są nieskuteczne i ryzykowne.
+- "podnieś/weź/bierz" gdy w lokacji jest więcej niż jeden przedmiot → zapytaj gracza w narracji co dokładnie chce zabrać.
+- "poczekaj/czekaj" bez kontekstu wobec konkretnego NPC lub sytuacji → opisz że bohater stoi i czeka, nic szczególnego się nie dzieje.
 
 === KRYTYCZNE ZASADY ===
 1. NIGDY nie wymyślaj przedmiotów, postaci ani miejsc których nie ma w opisie lokacji.
