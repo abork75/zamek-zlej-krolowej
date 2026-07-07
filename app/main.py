@@ -43,6 +43,14 @@ def index():
     return FileResponse(str(FRONTEND / "index.html"))
 
 
+@app.get("/api/cut-scene/{filename}")
+async def cut_scene_file(filename: str):
+    path = get_game_dir() / "cut_scenes" / filename
+    if not path.exists() or not path.is_file():
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(str(path), media_type="video/mp4")
+
+
 @app.get("/api/location-image/{loc_id}")
 async def location_image(loc_id: str, force: bool = False):
     world = load_world()
@@ -171,6 +179,7 @@ def debug_graph():
     state = load_state()
     world = load_world()
     flags = state["flags"]
+    inventory = state.get("inventory", [])
 
     # Krawędzie generowane z world.yaml — bez hardkodowanych warunków
     edges = []
@@ -181,11 +190,18 @@ def debug_graph():
             if isinstance(exit_def, dict):
                 target = exit_def["target"]
                 req = exit_def.get("requires")
-                weight = 1 if (not req or check_condition(req, flags)) else 0
+                weight = 1 if (not req or check_condition(req, flags, inventory)) else 0
             else:
                 target = exit_def
                 weight = 1
             edges.append({"from": loc_id, "to": target, "label": direction, "weight": weight})
+
+    # Krawędzie scripted move_to (z NPC scripted_solutions)
+    for loc_id, loc in world["locations"].items():
+        for npc in loc.get("npcs", []):
+            for ss in npc.get("scripted_solutions", []):
+                if ss.get("move_to") and ss["move_to"] in world["locations"]:
+                    edges.append({"from": loc_id, "to": ss["move_to"], "label": ss.get("id", "scripted"), "weight": 1, "type": "scripted"})
 
     nodes = [
         {"id": loc_id, "label": loc["name"],
@@ -209,7 +225,7 @@ def enrich_state(state: dict, world: dict) -> dict:
     state["atmosphere"] = loc.get("atmosphere", "")
     file_id, _ = resolve_variant(loc_id, loc, state["flags"], state.get("inventory", []))
     state["active_image"] = file_id
-    accessible, blocked = resolve_exits(loc, state["flags"])
+    accessible, blocked = resolve_exits(loc, state["flags"], state.get("inventory", []))
     # Wyjścia z pułapką są widoczne nawet gdy warunek nie spełniony — gracz musi móc w nie wejść
     trap_exits = [
         direction for direction, exit_def in loc.get("exits", {}).items()
@@ -252,7 +268,7 @@ def get_state():
     world = load_world()
     loc_id = state["current_location"]
     location = world["locations"].get(loc_id, {})
-    description = resolve_description(location, state["flags"])
+    description = resolve_description(location, state["flags"], state.get("inventory", []))
     last_narrative = state["history"][-1]["gm"] if state["history"] else description
     return {"state": enrich_state(state, world), "narrative": last_narrative}
 
@@ -269,6 +285,9 @@ def reset(start: str | None = None):
     state = reset_state(world)
     if start and start in world["locations"]:
         state["current_location"] = start
+        start_def = next((s for s in world.get("start_locations", []) if s["id"] == start), None)
+        if start_def and start_def.get("initial_flags"):
+            state["flags"].update(start_def["initial_flags"])
         save_state(state)
     intro_key = f"intro_{state['current_location']}"
     intro = world.get(intro_key) or world.get("intro", "")
@@ -450,6 +469,209 @@ npc_id: id NPC jeśli gracz adresuje konkretną postać z listy, null jeśli zwr
     return {"intent": "OTHER", "item_id": None}
 
 
+async def split_compound(player_input: str, client) -> list[str]:
+    """Detect if input contains two commands. Returns [cmd] or [cmd1, cmd2] (capped at 2)."""
+    prompt = f"""Oceń czy gracz wydał DWIE RÓŻNE AKCJE w jednym zdaniu.
+ZŁOŻONE = dwa różne CZASOWNIKI akcji (weź + otwórz, zbadaj + weź).
+NIE ZŁOŻONE = jeden czasownik + lista przedmiotów połączonych "i" (weź X i Y i Z = jedna akcja TAKE).
+
+Akcja: "{player_input}"
+
+Odpowiedz TYLKO w JSON (bez markdown):
+- Jedno polecenie: {{"compound": false, "actions": ["{player_input}"]}}
+- Dwie akcje: {{"compound": true, "actions": ["pierwsza akcja", "druga akcja"]}}
+
+Przykłady ZŁOŻONYCH (dwa czasowniki):
+- "weź klucz i otwórz drzwi" → compound: true, ["weź klucz", "otwórz drzwi"]
+- "zbadaj szafę i weź sukienkę" → compound: true, ["zbadaj szafę", "weź sukienkę"]
+
+Przykłady NIE-ZŁOŻONYCH (jeden czasownik, lista przedmiotów):
+- "weź miecz i tarczę" → compound: false
+- "weź miecz tarczę kolczugę i złoto" → compound: false
+- "biorę miecz i sakiewkę" → compound: false
+- "czy jest tu klucz i co z nim zrobić?" → compound: false
+- "wszystko!" → compound: false
+- "atakuję trolla" → compound: false"""
+    try:
+        resp = client.chat.completions.create(
+            model=GROK_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=80,
+            temperature=0,
+        )
+        raw = resp.choices[0].message.content.strip()
+        raw = re.sub(r"^```\w*\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+        data = json.loads(raw)
+        actions = data.get("actions") or [player_input]
+        return [a for a in actions[:2] if a]
+    except Exception as e:
+        log.info(f"[COMPOUND SPLIT ERROR] {e}")
+        return [player_input]
+
+
+async def _execute_intent_step(
+    player_input: str,
+    state: dict,
+    world: dict,
+    location: dict,
+    client,
+) -> tuple[str, dict | None, dict | None, dict, bool]:
+    """
+    Single intent: classify + dispatch. Mutates state (flags, inventory) in place.
+    Returns (intent_context, scripted_solution_fired, scripted_solution_obj, authoritative_flags, early_return).
+    early_return=True means return intent_context directly without calling narrator.
+    """
+    classified = await classify_intent(player_input, location, state, client)
+    intent = classified.get("intent", "OTHER")
+    item_id = classified.get("item_id")
+    npc_id = classified.get("npc_id")
+    log.info(f"[INTENT] {intent} item_id={item_id} npc_id={npc_id}")
+
+    intent_context = ""
+    authoritative_flags: dict = {}
+    scripted_solution_fired = None
+    scripted_solution_obj = None
+
+    # Set flags from recognized item
+    if item_id:
+        for item in find_items(item_id, location, state["flags"], state.get("inventory", [])):
+            flags_to_set = item.get("examine_sets_flag", {})
+            if not flags_to_set:
+                continue
+            set_on = item.get("set_on")
+            if set_on == "examine" and intent != "EXAMINE":
+                continue
+            new_flags = {k: v for k, v in flags_to_set.items() if state["flags"].get(k) != v}
+            if new_flags:
+                state["flags"].update(new_flags)
+                print(f"[FLAGS] set from item_id='{item_id}' (intent={intent}): {new_flags}")
+
+    _TAKE_ALL_KEYWORDS = ("wszystko", "wszystkie", "wszystkich", "resztę", "całość")
+    if intent == "TAKE":
+        item = find_item(item_id, location, state["flags"], state.get("inventory", []))
+        if item and item.get("takeable") and item["name"] not in state["inventory"]:
+            state["inventory"].append(item["name"])
+            intent_context = f"gracz właśnie podniósł '{item['name']}' — opisz jak go bierze, potwierdź że trzyma go w rękach"
+        elif item and not item.get("takeable", True):
+            intent_context = f"gracz próbuje wziąć '{item.get('hint', item_id)}' — to jest element otoczenia, nie można zabrać, wyjaśnij krótko dlaczego"
+        elif item and item["name"] in state["inventory"]:
+            intent_context = f"gracz próbuje wziąć '{item['name']}' — już to ma przy sobie"
+        elif not item and any(kw in player_input.lower() for kw in _TAKE_ALL_KEYWORDS):
+            takeable = [
+                i for i in location.get("items", [])
+                if i.get("takeable") and i["name"] not in state["inventory"]
+                and _item_visible(i, state["flags"], state.get("inventory", []))
+            ]
+            if takeable:
+                names = [i["name"] for i in takeable]
+                state["inventory"].extend(names)
+                intent_context = f"gracz zabiera WSZYSTKIE przedmioty: {', '.join(names)} — opisz że podnosi je jeden po drugim i chowa do ekwipunku"
+            else:
+                intent_context = "nie ma tu nic do zabrania (wszystko już wzięte lub nie ma przedmiotów)"
+
+    elif intent == "EXAMINE":
+        items = find_items(item_id, location, state["flags"], state.get("inventory", []))
+        if items:
+            descriptions = "\n".join(
+                f"- {item['name']}: {item['description'].strip()}"
+                for item in items if item.get("description")
+            )
+            if descriptions:
+                intent_context = (
+                    f"gracz ogląda '{items[0].get('hint', item_id)}' — podaj TYLKO opis wyglądu przedmiotu.\n"
+                    f"ZAKAZ: nie pisz że gracz chwyta, podnosi, bierze, trzyma — przedmiot leży na miejscu.\n"
+                    f"Użyj DOKŁADNIE tych opisów:\n{descriptions}"
+                )
+                examined_flags = items[0].get("examine_sets_flag", {})
+                if examined_flags:
+                    revealed_flag = list(examined_flags.keys())[0]
+                    container_items = [
+                        i for i in location.get("items", [])
+                        if i.get("hidden_when", {}).get("flag") == revealed_flag
+                        and _item_visible(i, state["flags"], state.get("inventory", []))
+                    ]
+                    if container_items:
+                        names = ", ".join(i["name"] for i in container_items)
+                        intent_context += f"\nBEZWZGLĘDNIE WYMIEŃ Z NAZWY przedmioty które gracz widzi w środku: {names}"
+                    else:
+                        intent_context += "\nW środku jest już pusto — wszystko zostało wzięte. Powiedz to graczowi wprost."
+
+    # Trap bypass — tylko gdy w lokacji jest pułapka I gracz próbuje przejść
+    _BYPASS_KEYWORDS = {"omijam", "omij", "przechodzę", "przejdź", "ominąć", "prześlizguję",
+                        "przeskakuję", "ostrożnie", "wchodzę", "dalej", "naprzód"}
+    _has_bypass_intent = intent == "MOVE" or any(kw in player_input.lower() for kw in _BYPASS_KEYWORDS)
+    if intent not in ("TAKE", "EXAMINE") and not intent_context:
+        trap_item = next(
+            (i for i in location.get("items", [])
+             if i.get("set_on") == "examine" and i.get("examine_sets_flag")),
+            None
+        )
+        if trap_item and _has_bypass_intent:
+            flag_key = list(trap_item["examine_sets_flag"].keys())[0]
+            if state["flags"].get(flag_key):
+                for k, v in (trap_item.get("bypass_sets_flag") or {}).items():
+                    state["flags"][k] = v
+                intent_context = (
+                    f"gracz omija '{trap_item['name']}' — wie już jak to zrobić (zbadał wcześniej). "
+                    f"Opisz że bezpiecznie mija pułapkę trzymając się ściany i staje przed masywnyni drzwiami. "
+                    f"NIE opisuj ruchu do następnej lokacji — gracz musi sam wpisać kierunek."
+                )
+            else:
+                intent_context = (
+                    f"gracz próbuje ominąć niebezpieczny fragment posadzki nie wiedząc gdzie dokładnie jest pułapka. "
+                    f"Próba kończy się NIEPOWODZENIEM — gracz cofa się w ostatniej chwili lub traci równowagę. "
+                    f"NIE opisuj że przeszedł. Zasugeruj że warto najpierw dokładniej zbadać posadzkę."
+                )
+
+    # TALK
+    if intent == "TALK":
+        location_npcs = location.get("npcs", [])
+        target_npc = None
+        if npc_id:
+            target_npc = next((n for n in location_npcs if n["id"] == npc_id), None)
+        if target_npc is None and location_npcs:
+            target_npc = location_npcs[0]
+        if target_npc is None:
+            return "Tu nikogo nie ma — pytasz w pustkę, ale nikt nie odpowiada.", None, None, {}, True
+        npc_flag_key = f"{target_npc['id']}_state"
+        current_npc_state = state["flags"].get(npc_flag_key, target_npc.get("state", ""))
+        unavailable_msg = target_npc.get("unavailable_states", {}).get(current_npc_state)
+        if unavailable_msg:
+            return unavailable_msg, None, None, {}, True
+        intent_context = (
+            f"Gracz zwraca się do: {target_npc['name']}.\n"
+            f"Odpowiedz WYŁĄCZNIE jako {target_npc['name']} — mów w pierwszej osobie, "
+            f"zgodnie z charakterem opisanym w sekcji NPC. Nie opisuj co NPC robi, mów jego głosem."
+        )
+
+    # NPC outcome classification
+    if intent not in ("TAKE", "EXAMINE") or not item_id:
+        for npc in location.get("npcs", []):
+            has_active = any(
+                s.get("flags") is not None and any(state["flags"].get(k) != v for k, v in s["flags"].items())
+                for s in npc.get("scripted_solutions", [])
+            )
+            if not has_active:
+                continue
+            npc_flags = await classify_npc_outcome(player_input, npc, location, state, client, is_talk=(intent == "TALK"))
+            if npc_flags is not None:
+                scripted_solution_fired = npc_flags
+                if npc_flags:
+                    state["flags"].update(npc_flags)
+                    authoritative_flags.update(npc_flags)
+                for s in npc.get("scripted_solutions", []):
+                    if s.get("flags") == npc_flags:
+                        scripted_solution_obj = s
+                        intent_context = f"WYNIK AKCJI — użyj DOSŁOWNIE jako narrację:\n{s['outcome'].strip()}"
+                        break
+                if not intent_context:
+                    intent_context = f"interakcja z {npc['name']} — opisz naturalnie, nie zmieniaj stanu"
+            break
+
+    return intent_context, scripted_solution_fired, scripted_solution_obj, authoritative_flags, False
+
+
 DIRECTION_ALIASES = {
     "północ": "północ", "n": "północ", "north": "północ",
     "południe": "południe", "s": "południe", "south": "południe",
@@ -457,6 +679,9 @@ DIRECTION_ALIASES = {
     "podejdź bliżej": "podejdź bliżej", "podejdz blizej": "podejdź bliżej",
     "zachód": "zachód", "w": "zachód", "west": "zachód",
     "wejście": "wejście", "wyjście": "wyjście",
+    "wieża": "wieża",
+    "góra": "góra", "gora": "góra", "up": "góra",
+    "dół": "dół", "dol": "dół", "down": "dół",
 }
 
 
@@ -467,7 +692,7 @@ def _try_move(player_input: str, state: dict, world: dict):
         return None
 
     location = world["locations"].get(state["current_location"], {})
-    accessible, blocked_msgs = resolve_exits(location, state["flags"])
+    accessible, blocked_msgs = resolve_exits(location, state["flags"], state.get("inventory", []))
 
     if direction in accessible:
         target = accessible[direction]
@@ -475,7 +700,7 @@ def _try_move(player_input: str, state: dict, world: dict):
             return None
         state["current_location"] = target
         new_loc = world["locations"][target]
-        description = resolve_description(new_loc, state["flags"])
+        description = resolve_description(new_loc, state["flags"], state.get("inventory", []))
         state["turn"] += 1
         state["history"].append({"turn": state["turn"], "gm": description.strip()})
         apply_city_arrest_mechanic(state, world)
@@ -500,7 +725,7 @@ def _try_move(player_input: str, state: dict, world: dict):
             state["current_location"] = trap["target"]
             msg = trap.get("message", "Wpadasz w pułapkę!")
             new_loc = world["locations"][trap["target"]]
-            full_msg = msg + "\n\n" + resolve_description(new_loc, state["flags"])
+            full_msg = msg + "\n\n" + resolve_description(new_loc, state["flags"], state.get("inventory", []))
             state["turn"] += 1
             state["history"].append({"turn": state["turn"], "gm": full_msg})
             save_state(state)
@@ -546,157 +771,67 @@ async def chat(body: dict):
         save_state(state)
         return {"narrative": narrative, "state": enrich_state(state, world), "ending": ending_type}
 
-    # 3. Klasyfikacja intencji
-    classified = await classify_intent(player_input, location, state, client)
-    intent = classified.get("intent", "OTHER")
-    item_id = classified.get("item_id")
-    npc_id = classified.get("npc_id")
-    log.info(f"[INTENT] {intent} item_id={item_id} npc_id={npc_id}")
+    # 3. Wykryj złożone polecenie (max 2 akcje)
+    actions = await split_compound(player_input, client)
+    log.info(f"[COMPOUND] {len(actions)} akcji: {actions}")
 
-    # 3. Dispatch — modyfikuj stan i buduj kontekst dla narratora
-    intent_context = ""
+    if len(actions) == 2:
+        # Złożone polecenie: uruchom pipeline dla każdej akcji sekwencyjnie, jeden narrator na końcu
+        ctx1, ss_fired1, ss_obj1, auth1, _ = await _execute_intent_step(actions[0], state, world, location, client)
+        ctx2, ss_fired2, ss_obj2, auth2, _ = await _execute_intent_step(actions[1], state, world, location, client)
 
-    # Ustaw flagi dla rozpoznanego itemu
-    # set_on: examine → tylko gdy EXAMINE intent
-    # brak set_on → przy każdej wzmiance (np. "przeskocz zapadnię")
-    if item_id:
-        for item in find_items(item_id, location, state["flags"], state.get("inventory", [])):
-            flags_to_set = item.get("examine_sets_flag", {})
-            if not flags_to_set:
-                continue
-            set_on = item.get("set_on")
-            if set_on == "examine" and intent != "EXAMINE":
-                continue
-            new_flags = {k: v for k, v in flags_to_set.items() if state["flags"].get(k) != v}
-            if new_flags:
-                state["flags"].update(new_flags)
-                print(f"[FLAGS] set from item_id='{item_id}' (intent={intent}): {new_flags}")
+        combined_context = ""
+        if ctx1 and ctx2:
+            combined_context = f"[Akcja 1] {ctx1}\n\n[Akcja 2] {ctx2}"
+        else:
+            combined_context = ctx1 or ctx2
 
-    if intent == "TAKE":
-        item = find_item(item_id, location, state["flags"], state.get("inventory", []))
-        if item and item.get("takeable") and item["name"] not in state["inventory"]:
-            state["inventory"].append(item["name"])
-            intent_context = f"gracz właśnie podniósł '{item['name']}' — opisz jak go bierze, potwierdź że trzyma go w rękach"
-        elif item and not item.get("takeable", True):
-            intent_context = f"gracz próbuje wziąć '{item.get('hint', item_id)}' — to jest element otoczenia, nie można zabrać, wyjaśnij krótko dlaczego"
-        elif item and item["name"] in state["inventory"]:
-            intent_context = f"gracz próbuje wziąć '{item['name']}' — już to ma przy sobie"
+        any_scripted = ss_fired1 is not None or ss_fired2 is not None
+        flags_after_steps = state["flags"].copy()
 
-    elif intent == "EXAMINE":
-        items = find_items(item_id, location, state["flags"], state.get("inventory", []))
-        if items:
-            descriptions = "\n".join(
-                f"- {item['name']}: {item['description'].strip()}"
-                for item in items if item.get("description")
-            )
-            if descriptions:
-                intent_context = (
-                    f"gracz ogląda '{items[0].get('hint', item_id)}' — podaj TYLKO opis wyglądu przedmiotu.\n"
-                    f"ZAKAZ: nie pisz że gracz chwyta, podnosi, bierze, trzyma — przedmiot leży na miejscu.\n"
-                    f"Użyj DOKŁADNIE tych opisów:\n{descriptions}"
-                )
-                # Jeśli badany przedmiot odsłania inne itemy (examine_sets_flag), wylistuj co zostało w środku
-                examined_flags = items[0].get("examine_sets_flag", {})
-                if examined_flags:
-                    revealed_flag = list(examined_flags.keys())[0]
-                    container_items = [
-                        i for i in location.get("items", [])
-                        if i.get("hidden_when", {}).get("flag") == revealed_flag
-                        and _item_visible(i, state["flags"], state.get("inventory", []))
-                    ]
-                    if container_items:
-                        names = ", ".join(i["name"] for i in container_items)
-                        intent_context += f"\nBEZWZGLĘDNIE WYMIEŃ Z NAZWY przedmioty które gracz widzi w środku: {names}"
-                    else:
-                        intent_context += "\nW środku jest już pusto — wszystko zostało wzięte. Powiedz to graczowi wprost."
-
-    # 3b. Obsługa prób ominięcia pułapki — sprawdź czy w lokacji jest item z set_on: examine
-    if intent not in ("TAKE", "EXAMINE") and not intent_context:
-        trap_item = next(
-            (i for i in location.get("items", [])
-             if i.get("set_on") == "examine" and i.get("examine_sets_flag")),
-            None
+        prompt = build_gm_prompt(player_input, state, world, intent_context=combined_context, scripted_fired=any_scripted)
+        response = client.chat.completions.create(
+            model=GROK_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=600,
+            temperature=0.8,
         )
-        if trap_item:
-            flag_key = list(trap_item["examine_sets_flag"].keys())[0]
-            if state["flags"].get(flag_key):
-                for k, v in (trap_item.get("bypass_sets_flag") or {}).items():
-                    state["flags"][k] = v
-                intent_context = (
-                    f"gracz omija '{trap_item['name']}' — wie już jak to zrobić (zbadał wcześniej). "
-                    f"Opisz że bezpiecznie mija pułapkę trzymając się ściany i staje przed masywnyni drzwiami. "
-                    f"NIE opisuj ruchu do następnej lokacji — gracz musi sam wpisać kierunek."
-                )
-            else:
-                intent_context = (
-                    f"gracz próbuje ominąć niebezpieczny fragment posadzki nie wiedząc gdzie dokładnie jest pułapka. "
-                    f"Próba kończy się NIEPOWODZENIEM — gracz cofa się w ostatniej chwili lub traci równowagę. "
-                    f"NIE opisuj że przeszedł. Zasugeruj że warto najpierw dokładniej zbadać posadzkę."
-                )
+        gm_response = response.choices[0].message.content.strip()
+        log.info(f"[GM RAW] {gm_response[:120]}")
 
-    # 3c. TALK — rozmowa z NPC
-    if intent == "TALK":
-        location_npcs = location.get("npcs", [])
-        # Wybierz NPC: adresowany wprost lub pierwszy w lokacji
-        target_npc = None
-        if npc_id:
-            target_npc = next((n for n in location_npcs if n["id"] == npc_id), None)
-        if target_npc is None and location_npcs:
-            target_npc = location_npcs[0]
+        narrative, updated_state = _parse_gm_response(gm_response, state, player_input)
+        if any_scripted:
+            updated_state["flags"] = flags_after_steps
+        elif auth1 or auth2:
+            updated_state["flags"].update({**auth1, **auth2})
+        apply_city_arrest_mechanic(updated_state, world)
+        for ss_obj in [ss_obj1, ss_obj2]:
+            if ss_obj:
+                for item in ss_obj.get("inventory_remove", []):
+                    updated_state["inventory"] = [i for i in updated_state["inventory"] if i != item]
+                for item in ss_obj.get("inventory_add", []):
+                    if item not in updated_state["inventory"]:
+                        updated_state["inventory"].append(item)
+                if ss_obj.get("move_to") and ss_obj["move_to"] in world["locations"]:
+                    updated_state["current_location"] = ss_obj["move_to"]
+                    new_loc = world["locations"][ss_obj["move_to"]]
+                    new_desc = resolve_description(new_loc, updated_state["flags"], updated_state.get("inventory", []))
+                    narrative = narrative + "\n\n" + new_desc.strip()
+        save_state(updated_state)
+        return {"narrative": narrative, "state": enrich_state(updated_state, world)}
 
-        if target_npc is None:
-            narrative = "Tu nikogo nie ma — pytasz w pustkę, ale nikt nie odpowiada."
-            state["turn"] += 1
-            state["history"].append({"turn": state["turn"], "gm": narrative})
-            save_state(state)
-            return {"narrative": narrative, "state": enrich_state(state, world)}
+    # 4. Pojedyncze polecenie — classify + dispatch + narrator
+    intent_context, scripted_solution_fired, scripted_solution_obj, authoritative_flags, early_return = \
+        await _execute_intent_step(actions[0], state, world, location, client)
 
-        # Sprawdź czy NPC jest dostępny
-        npc_flag_key = f"{target_npc['id']}_state"
-        current_npc_state = state["flags"].get(npc_flag_key, target_npc.get("state", ""))
-        unavailable_msg = target_npc.get("unavailable_states", {}).get(current_npc_state)
-        if unavailable_msg:
-            state["turn"] += 1
-            state["history"].append({"turn": state["turn"], "gm": unavailable_msg})
-            save_state(state)
-            return {"narrative": unavailable_msg, "state": enrich_state(state, world)}
-
-        # NPC dostępny — nakieruj narratora żeby odpowiedział w charakterze NPC
-        intent_context = (
-            f"Gracz zwraca się do: {target_npc['name']}.\n"
-            f"Odpowiedz WYŁĄCZNIE jako {target_npc['name']} — mów w pierwszej osobie, "
-            f"zgodnie z charakterem opisanym w sekcji NPC. Nie opisuj co NPC robi, mów jego głosem."
-        )
-
-    # 4. NPC outcome classification — deterministyczne wyniki interakcji z NPC
-    authoritative_flags = {}  # flagi z klasyfikatora — nadpiszą JSON Groka po narracji
-    scripted_solution_fired = None  # None = brak, {} lub {flagi} = scripted_solution odpaliło
-    scripted_solution_obj = None    # pełny obiekt scripted_solution (do inventory_remove)
-    if intent not in ("TAKE", "EXAMINE") or not item_id:
-        for npc in location.get("npcs", []):
-            has_active = any(
-                s.get("flags") is not None and any(state["flags"].get(k) != v for k, v in s["flags"].items())
-                for s in npc.get("scripted_solutions", [])
-            )
-            if not has_active:
-                continue
-            npc_flags = await classify_npc_outcome(player_input, npc, location, state, client, is_talk=(intent == "TALK"))
-            if npc_flags is not None:
-                scripted_solution_fired = npc_flags
-                if npc_flags:
-                    state["flags"].update(npc_flags)
-                    authoritative_flags.update(npc_flags)
-                # Znajdź pasujący scripted_solution (outcome + inventory_remove)
-                for s in npc.get("scripted_solutions", []):
-                    if s.get("flags") == npc_flags:
-                        scripted_solution_obj = s
-                        intent_context = f"WYNIK AKCJI — użyj DOSŁOWNIE jako narrację:\n{s['outcome'].strip()}"
-                        break
-                if not intent_context:
-                    intent_context = f"interakcja z {npc['name']} — opisz naturalnie, nie zmieniaj stanu"
-            break  # jeden NPC na turę
+    if early_return:
+        state["turn"] += 1
+        state["history"].append({"turn": state["turn"], "gm": intent_context})
+        save_state(state)
+        return {"narrative": intent_context, "state": enrich_state(state, world)}
 
     # 5. Grok jako narrator z kontekstem intencji
+    flags_before_narrator = state["flags"].copy()
     prompt = build_gm_prompt(player_input, state, world, intent_context=intent_context, scripted_fired=scripted_solution_fired is not None)
     response = client.chat.completions.create(
         model=GROK_MODEL,
@@ -715,24 +850,25 @@ async def chat(body: dict):
             narrative, updated_state = move_result
             return {"narrative": narrative, "state": enrich_state(updated_state, world)}
 
-    flags_before_narrator = state["flags"].copy()
     narrative, updated_state = _parse_gm_response(gm_response, state, player_input)
     if scripted_solution_fired is not None:
-        # Scripted solution odpaliło — przywróć flagi do stanu sprzed narracji
-        # i nałóż TYLKO to co scripted_solution zdecydowało. Grok nie może nic dodać.
         updated_state["flags"] = {**flags_before_narrator, **scripted_solution_fired}
-        # Deterministycznie usuń przedmioty zużyte przez scripted_solution (narrator nie może ich przywrócić)
         if scripted_solution_obj:
             for item in scripted_solution_obj.get("inventory_remove", []):
                 updated_state["inventory"] = [i for i in updated_state["inventory"] if i != item]
+            for item in scripted_solution_obj.get("inventory_add", []):
+                if item not in updated_state["inventory"]:
+                    updated_state["inventory"].append(item)
     elif authoritative_flags:
         updated_state["flags"].update(authoritative_flags)
     apply_city_arrest_mechanic(updated_state, world)
-    # Scripted solution może przenieść gracza do innej lokacji
     if scripted_solution_obj and scripted_solution_obj.get("move_to"):
         target = scripted_solution_obj["move_to"]
         if target in world["locations"]:
             updated_state["current_location"] = target
+            new_loc = world["locations"][target]
+            new_desc = resolve_description(new_loc, updated_state["flags"], updated_state.get("inventory", []))
+            narrative = narrative + "\n\n" + new_desc.strip()
     save_state(updated_state)
     return {"narrative": narrative, "state": enrich_state(updated_state, world)}
 

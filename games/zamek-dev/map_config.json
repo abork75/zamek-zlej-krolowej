@@ -1,7 +1,7 @@
 {
   "levels": {
     "las": {
-      "label": "Las & Zamek",
+      "label": "Las",
       "nodes": {
         "las":               { "x": 0.45, "y": 0.78 },
         "polana":            { "x": 0.64, "y": 0.78 },
@@ -10,12 +10,33 @@
         "wnetrze_hatki":     { "x": 0.22, "y": 0.93 },
         "most":              { "x": 0.45, "y": 0.60 },
         "zamek":             { "x": 0.45, "y": 0.42 },
-        "klatka_wieznia":    { "x": 0.64, "y": 0.42 },
-        "dziedziniec_zamku": { "x": 0.45, "y": 0.24 },
-        "korytarz":          { "x": 0.45, "y": 0.15 },
-        "loch":              { "x": 0.62, "y": 0.20 },
-        "kanaly":            { "x": 0.78, "y": 0.28 },
-        "sala_tronowa":      { "x": 0.45, "y": 0.05 }
+        "klatka_wieznia":    { "x": 0.64, "y": 0.42 }
+      }
+    },
+    "zamek": {
+      "label": "Zamek",
+      "nodes": {
+        "dziedziniec_zamku":  { "x": 0.45, "y": 0.82 },
+        "wiezba_parter":      { "x": 0.63, "y": 0.93 },
+        "wiezba":             { "x": 0.63, "y": 0.82 },
+        "wiezba_gore":        { "x": 0.63, "y": 0.68 },
+        "korytarz_polnocny":  { "x": 0.45, "y": 0.67 },
+        "sala_tronowa":       { "x": 0.45, "y": 0.52 },
+        "magazyn_ciemny":     { "x": 0.15, "y": 0.68 },
+        "korytarz":           { "x": 0.15, "y": 0.53 },
+        "magazyn_glowny":     { "x": 0.15, "y": 0.38 },
+        "loch":               { "x": 0.30, "y": 0.68 },
+        "kanaly":             { "x": 0.30, "y": 0.82 },
+        "cela_korytarz":      { "x": 0.78, "y": 0.82 },
+        "cela_przy_kratach":  { "x": 0.78, "y": 0.68 },
+        "cela_zamknieta":     { "x": 0.93, "y": 0.68 },
+        "tunel_ucieczki":     { "x": 0.93, "y": 0.52 }
+      }
+    },
+    "las2": {
+      "label": "Las Za Zamkiem",
+      "nodes": {
+        "las2": { "x": 0.50, "y": 0.50 }
       }
     },
     "miasto": {

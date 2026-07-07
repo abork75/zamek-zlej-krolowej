@@ -1,5 +1,43 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── INTRO OVERLAY ── */
+#intro-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+#intro-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#intro-skip {
+  position: absolute;
+  bottom: 32px;
+  right: 32px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid #5a4a30;
+  color: #c8b89a;
+  padding: 8px 20px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 1px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+#intro-skip:hover {
+  background: rgba(42,24,0,0.8);
+  border-color: #8a6020;
+}
+
 /* ── ENDING OVERLAY ── */
 #ending-overlay {
   position: fixed;

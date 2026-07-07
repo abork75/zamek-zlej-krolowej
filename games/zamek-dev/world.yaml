@@ -9,6 +9,16 @@ start_locations:
   - id: pokoj_karczmy
     label: "🏘️ Miasto"
     description: "Zacznij w mieście — śledź karawanę"
+  - id: dziedziniec_zamku
+    label: "🏰 Zamek"
+    description: "Zacznij na dziedzińcu — strażnik już odszedł"
+    initial_flags:
+      straznik_state: straznik_oszukany
+
+intro_dziedziniec_zamku: |
+  Stoisz na dziedzińcu zamku Królowej. Strażnik już nie blokuje drogi — udało ci się
+  go przechytrzyć. Teraz czas zbadać zamek i znaleźć drogę do sali tronowej.
+  Co robisz?
 
 intro_pokoj_karczmy: |
   Budzisz się w małym pokoju na górze karczmy. Głowa boli — za dużo wczoraj wypiłeś.
@@ -81,7 +91,7 @@ locations:
       - file: "polana_pusta"
         condition:
           - {inventory_contains: "zardzewiały miecz"}
-          - {inventory_contains: "sakiewka ze złotem"}
+          - {inventory_contains: "złota moneta"}
         label: "Polana bez połysku (oba przedmioty wzięte)"
         prompt_extra: "usuń rozbłysk światła nad kamieniem, reszta sceny bez zmian"
       - file: "polana"
@@ -104,10 +114,10 @@ locations:
           Stary miecz z zardzewiałym ostrzem. Widać na nim wyryte runy.
           Mimo rdzy trzyma się całkiem dobrze — ostrze jest wciąż sprawne.
         takeable: true
-      - id: sakiewka
-        name: "sakiewka ze złotem"
+      - id: moneta
+        name: "złota moneta"
         hint: "coś błyszczącego przy omszałym głazie"
-        description: "Skórzana sakiewka. W środku brzęczą monety — co najmniej 10 złotych."
+        description: "Pojedyncza złota moneta z profilem starego króla. Wciąż lśni mimo kurzu."
         takeable: true
     npcs: []
     atmosphere: "jasna, spokojna, kontrastuje z lasem"
@@ -257,7 +267,7 @@ locations:
             result: "troll_pokonany"
             flags: {troll_state: "troll_pokonany"}
           - id: przekupstwo
-            requires: {inventory: "sakiewka ze złotem"}
+            requires: {inventory: "złota moneta"}
             action_hint: "gracz musi wyraźnie zaoferować lub wręczyć złoto/sakiewkę trollowi — samo posiadanie złota nie wystarczy"
             trigger: "gracz daje złoto lub sakiewkę trollowi"
             outcome: |
@@ -505,15 +515,26 @@ locations:
         condition: null
         label: "Pusty dziedziniec"
         prompt_extra: "Dziedziniec średniowiecznego zamku, widać w tle wejście główne i z prawej małą furtkę, a z lewej schody w dół"
-    description: |
-      Stoisz na dziedzincu zamku Królowej, przed Tobą pojawia się strażnik, i pyta wrogo:
-      "Dokąd to?"
+    description_variants:
+      - condition: {flag: straznik_state, values: [straznik_pokonany, straznik_przekupiony, straznik_oszukany]}
+        description: |
+          Stoisz na dziedzińcu zamku Królowej. Dziedziniec jest teraz pusty — droga na północ
+          stoi otworem.
+      - condition: null
+        description: |
+          Stoisz na dziedzincu zamku Królowej, przed Tobą pojawia się strażnik, i pyta wrogo:
+          "Dokąd to?"
     exits:
-      południe: zamek
+      południe:
+        target: zamek
+        blocked_message: "Brama zatrzasnęła się za tobą z głuchym łoskotem. Nie ma powrotu."
       północ:
-        target: korytarz
+        target: korytarz_polnocny
         requires: {flag: straznik_state, values: [straznik_pokonany, straznik_przekupiony, straznik_oszukany]}
         blocked_message: "Strażnik tak po prostu Cię nie przepuści."
+      wschód: cela_korytarz
+      zachód: magazyn_ciemny
+      wieża: wiezba_parter
     items: []
     npcs:
       - id: straznik_dziedziniec
@@ -539,7 +560,7 @@ locations:
               "Strażnik podejmuje walkę i ginie w niej - okazuje się dużo słabszy, krew zalewa dziedziniec.".
             result: "straznik_pokonany"
           - id: przekupstwo
-            requires: {inventory: "sakiewka ze złotem"}
+            requires: {inventory: "złota moneta"}
             allow_talk: true
             trigger: "gracz oferuje złoto lub sakiewkę"
             flags: {straznik_state: straznik_przekupiony}
@@ -561,87 +582,102 @@ locations:
           - przymilnie, wychwalając jego walory których mu szczególnie brakuje, czyli odwagę i honor
 
   sala_tronowa:
-    name: "Sala Tronowa Królowej"
-    ending: "queen_seduction"
+    name: "Sala Tronowa"
     image_variants:
       - file: "sala_tronowa"
+        base: true
         condition: null
-        label: "Sala tronowa"
-        prompt_extra: "ogromna mroczna sala tronowa średniowiecznego zamku, czarne kolumny, fioletowe płomienie w pochodniach, na tronie siedzi piękna mroczna królowa w czarnej sukni z koroną, patrzy uwodzicielsko"
+        label: "Sala tronowa — pusta"
+        prompt_extra: "ogromna mroczna sala tronowa średniowiecznego zamku, czarne kolumny, fioletowe płomienie w pochodniach na ścianach, pusty obsydianowy tron, pod ścianą dwóch znudzonych strażników, nowe gobeliny i ciężkie meble przy ścianach, szare światło"
     description: |
-      Pchnięcie masywnych drzwi i stajesz w progu sali tronowej.
-      Ogromne, mroczne wnętrze wypełnia fioletowe światło pochodni. Czarne kolumny
-      giną gdzieś wysoko w ciemnościach sklepienia. Na końcu sali, na obsydianowym
-      tronie, siedzi kobieta.
-      Złą Królową widziałeś wcześniej tylko na pogłoskach — rzeczywistość jest zupełnie inna.
-      Jest młoda. Piękna. I patrzy na ciebie z uśmiechem, który mówi że czekała właśnie na ciebie.
+      Pchnięcie masywnych drzwi. Ogromna sala, ale pusto — tron obsydianowy stoi
+      opuszczony. Pod ścianą dwóch strażników gra w kości, nawet na ciebie nie patrząc.
+      Na ścianach pochodnie — jedna wydaje się luźniej osadzona w uchwycie.
+      Przy ścianach nowe, ciężkie meble i gobeliny w głębokich kolorach — jakby niedawno
+      dostarczone. Skąd to wszystko nagle?
     exits:
-      południe: korytarz
-    items: []
-    npcs:
-      - id: krolowa
-        name: "Królowa"
+      południe: korytarz_polnocny
+    items:
+      - id: pochodnia
+        name: "pochodnia"
+        hint: "pochodnia na ścianie — jedna wydaje się luźna"
+        description: "Drewniana pochodnia, tlący się ogień. Jeden uchwyt jest obluzowany — można ją wyjąć."
+        takeable: true
+      - id: nowe_meble
+        name: "nowe meble i gobeliny"
+        hint: "nowe ciężkie meble i gobeliny przy ścianach"
         description: |
-          Czarna suknia, korona z obsydianu, oczy koloru bursztynu. Mówi spokojnie,
-          jakby wiedziała z góry jak ta rozmowa się skończy. Jest królową od dziesięciu lat
-          i przez ten czas nikt nie dotarł tak daleko jak ty. To ją bawi — i intryguje.
-    atmosphere: "monumentalny, mroczny, fioletowe światło, zapach kadzidła i czegoś słodkiego — nieodparcie przyciągający"
+          Masywne dębowe stoły, kufry z okuciami, gobeliny z egzotycznymi wzorami.
+          Wszystko nowe, drogie, jakby prosto z wozu. Może to właśnie przywiozła ta karawana?
+        takeable: false
+    npcs:
+      - id: straznik_tronowy
+        name: "Strażnicy w sali tronowej"
+        description: |
+          Dwóch znudzonych strażników gra w kości pod ścianą. Nie są wrogo nastawieni —
+          myślą że przyszłeś po towar z karawany. Nie wiedzą co naprawdę wiozła.
+          Na pytanie o Królową: wyjechała tydzień temu, nie wiadomo kiedy wróci.
+          Nie wiedzą dokąd — i lepiej nie pytać.
+        state: "gra_w_kosci"
+        scripted_solutions:
+          - id: pytanie_o_krolowa
+            allow_talk: true
+            trigger: "gracz pyta o Królową, o jej nieobecność lub dokąd pojechała"
+            outcome: |
+              Starszy strażnik wzrusza ramionami nie odrywając wzroku od kości.
+              "Wyjechała tydzień temu. Dokąd — nie nasza sprawa. Wróci jak wróci."
+              Młodszy dodaje ciszej: "Wzięła tylko dwóch ludzi. I te skrzynie z dołu."
+              Żaden nie kontynuuje.
+            flags: {krolowa_nieobecna: true}
+        creative_solutions_hint: |
+          Strażnicy są leniwi i niegroźni. Myślą że gracz jest tu służbowo.
+          Nie blokują ruchu — można wziąć pochodnie, chodzić po sali.
+          Na pytania odpowiadają niechętnie ale krótko. Nie wiedzą nic o substancji.
+    atmosphere: "wielka pusta sala, echo kroków, kości stukają o kamień, fioletowe płomienie"
 
   korytarz:
-    name: "Szeroki korytarz zamkowy"
+    name: "Korytarz Magazynowy"
     image_variants:
-      - file: "korytarz_drzwi"
-        condition: {flag: przy_drzwiach, value: true}
-        label: "Zbliżenie na drzwi sali tronowej"
-        prompt_extra: "zbliżenie na masywne okuowane drzwi średniowiecznego zamku, pochodni blask pada na ciemne drewno i żelazne okucia, fioletowy blask sączy się spod drzwi"
       - file: "korytarz_wolny"
-        condition: {flag: zapadnia_zauwazona, value: true}
-        label: "Korytarz — pułapka znana, droga wolna"
-        prompt_extra: "usuń rysy z posadzki, dodaj wyraźną bezpieczną ścieżkę wzdłuż ściany prowadzącą do masywnych drzwi, reszta sceny bez zmian"
+        condition: {flag: zapadnia_mag_zauwazona, value: true}
+        label: "Korytarz — pułapka znana, bezpieczna ścieżka"
+        prompt_extra: "kamienny korytarz magazynu zamkowego, w świetle pochodni widać bezpieczną ścieżkę wzdłuż ściany, w głębi masywne drzwi do składziku"
       - file: "korytarz_zamkowy"
         base: true
         condition: null
-        label: "Korytarz z zapadnią (baza)"
-        prompt_extra: "Szeroki kamienny korytarz średniowiecznego zamku, pochodnie na ścianach, w posadzce ledwo widoczne rysy wskazujące na zapadnię, w tle masywne drzwi do sali tronowej"
+        label: "Korytarz magazynowy z pułapką"
+        prompt_extra: "kamienny korytarz magazynu zamkowego, w świetle pochodni ledwo widoczne rysy w posadzce — zapadnia, w głębi masywne drzwi do składziku"
     description: |
-      Wchodzisz do szerokiego kamiennego korytarza. Płomienie pochodni po obu stronach
-      rzucają tańczące cienie na wypolerowane kamienne płyty posadzki. Na końcu korytarza
-      widoczne są masywne, okuowane drzwi — pewnie wejście do sali tronowej.
-      Posadzka jest gładka i zimna pod stopami.
+      Kamienny korytarz prowadzący do magazynów. Pochodnia rzuca długie cienie.
+      Posadzka wygląda normalnie, ale coś jest z nią nie tak — rysy tworzą podejrzany wzór.
+      Na końcu korytarza masywne drzwi do składziku.
     exits:
-      południe: dziedziniec_zamku
+      zachód: magazyn_ciemny
       północ:
-        target: sala_tronowa
-        requires: {flag: zapadnia_zauwazona, value: true}
+        target: magazyn_glowny
+        requires: {flag: zapadnia_mag_zauwazona, value: true}
         hidden: false
         blocked_message: "Ruszasz w stronę drzwi — ale posadzka usuwa się pod nogami!"
         trap:
           target: loch
-          message: "Nie zauważasz zapadni w porę — kamienne płyty rozsuwają się bez ostrzeżenia i wpadasz w ciemność! Upadasz twardo na kamienną posadzkę poniżej."
+          message: "Nie zauważasz zapadni w porę — kamienne płyty rozsuwają się bez ostrzeżenia i wpadasz w ciemność! Spadasz twardo na wilgotną kamienną posadzkę poniżej."
     items:
-      - id: zapadnia
+      - id: zapadnia_mag
         name: "kamienne płyty"
-        hint: "podejrzane rysy w posadzce, pułapka, zapadnia"
-        description: "Przyjrzawszy się uważnie, dostrzegasz cienkie rysy tworzące regularny prostokąt — to zapadnia! Można ją ominąć, trzymając się przy ścianie."
+        hint: "podejrzane rysy w posadzce korytarza"
+        description: "Cienkie rysy w regularny prostokąt — to zapadnia. Można ją ominąć trzymając się przy ścianie."
         takeable: false
-        examine_sets_flag: {zapadnia_zauwazona: true}
-        set_on: examine
-        bypass_sets_flag: {przy_drzwiach: true}
-      - id: drzwi_tronowe
-        name: "masywne drzwi"
-        hint: "okuowane drzwi na końcu korytarza, wejście do sali tronowej"
-        description: "Masywne drzwi z ciemnego drewna, okute żelazem. Spod nich sączy się fioletowy blask. Czujesz jak powietrze wibruje — za nimi jest coś potężnego."
-        takeable: false
-        examine_sets_flag: {przy_drzwiach: true}
+        examine_sets_flag: {zapadnia_mag_zauwazona: true}
         set_on: examine
     npcs: []
-    atmosphere: "chłodny, kamienno-torcherowy korytarz, napięcie przed salą tronową — coś tu jest nie tak z posadzką"
+    atmosphere: "chłodny kamień, blask pochodni, zapach kurzu i starego drewna"
 
   loch:
     name: "Ciemny loch pod zamkiem"
     image_variants:
       - file: "loch_zamkowy"
         condition: null
+        base: true
         label: "Loch"
         prompt_extra: "Ciemna, wilgotna komnata pod zamkiem, grube kamienne ściany pokryte mchem, w jednym miejscu ledwo widoczna wąska szczelina w murze, słabe światło sączy się z góry"
     description: |
@@ -668,22 +704,363 @@ locations:
     atmosphere: "wilgoć, ciemność, zapach stęchlizny i zimnego kamienia — cisza przerywana kapaniem wody"
 
   kanaly:
-    name: "Podziemne kanały odprowadzające"
+    name: "Tunel ucieczki"
     image_variants:
       - file: "kanaly_podziemne"
         condition: null
-        label: "Kanały"
-        prompt_extra: "Wąski podziemny tunel z cegły, woda sięga do kolan, w oddali widać jasność — wyjście na zewnątrz, blask lasu"
+        base: true
+        label: "Tunel"
+        prompt_extra: "wąski ziemny tunel wykopany ręcznie, mokre ściany, w oddali jasność — wyjście na zewnątrz do gęstego lasu po drugiej stronie zamku"
     description: |
-      Przeciskasz się przez wąskie przejście i ląduje w wilgotnym tunelu. Woda
-      sięga do kolan — to stare kanały odprowadzające ścieki z zamku. Trudno tu oddychać,
-      ale w oddali widać jasność. Kamienny tunel biegnie na zachód, gdzie blask słońca
-      przedziera się przez gęstą roślinność. Wolność jest blisko.
+      Wąski, wilgotny tunel ciągnący się pod fundamentami zamku. Zapach stęchlizny
+      i kamienia. Przeciskasz się przez ciemność — w oddali widać jasność.
+      Tunel wyprowadza cię z powrotem na dziedziniec, od strony magazynów.
     exits:
-      zachód: las
+      wschód: dziedziniec_zamku
     items: []
     npcs: []
-    atmosphere: "zimna woda do kolan, smród ścieków, ale w oddali zbawienne światło lasu"
+    atmosphere: "ciasno, wilgoć, ale wyjście jest blisko"
+
+  # ===== ZAMEK: NOWE LOKACJE =====
+
+  korytarz_polnocny:
+    name: "Korytarz Północny"
+    image_variants:
+      - file: "korytarz_polnocny"
+        base: true
+        condition: null
+        label: "Prosty korytarz północny"
+        prompt_extra: "prosty kamienny korytarz zamkowy, pochodnie na ścianach, masywne drzwi w głębi prowadzące do sali tronowej, zimne szare kamienie"
+    description: |
+      Prosty kamienny korytarz. Pochodnie rzucają spokojne, równe światło.
+      Na końcu masywne drzwi — za nimi pewnie sala tronowa.
+    exits:
+      południe: dziedziniec_zamku
+      północ: sala_tronowa
+    items: []
+    npcs: []
+    atmosphere: "spokojny korytarz, bez pułapek, równy blask pochodni"
+
+  wiezba_parter:
+    name: "Parter Wieży"
+    image_variants:
+      - file: "wiezba_parter"
+        base: true
+        condition: null
+        label: "Parter wieży — dwaj strażnicy"
+        prompt_extra: "okrągła komnata przy wejściu do wieży zamkowej, dwaj leniwi strażnicy siedzą przy stole grając w kości, resztki jedzenia, pochodnie na ścianach, drewniane schody prowadzą na górę, masywne drzwi wejściowe"
+    description: |
+      Parter wieży. Przy stole siedzą dwaj strażnicy i grają w kości, kompletnie
+      znudzeni. Zerkają na ciebie obojętnie i wracają do gry.
+      Na ścianie drewniane schody prowadzą na górę.
+    exits:
+      wyjście: dziedziniec_zamku
+      góra: wiezba
+    items: []
+    npcs: []
+    atmosphere: "zapach potu i resztek jedzenia, stukot kości do gry, nuda"
+
+  wiezba:
+    name: "Pracownia Alchemika — Wieża"
+    image_variants:
+      - file: "wiezba_alchemik"
+        base: true
+        condition: null
+        label: "Pracownia alchemika"
+        prompt_extra: "okrągła komnata w podstawie wieży zamkowej przerobiona na pracownię alchemiczną — stoły z retortami, kolbami i mieszaninami, regały z flakonikami i ziołami, w rogu drewniana drabina prowadząca na górę, mroczna atmosfera, kolorowe płyny w szklanych naczyniach"
+    description: |
+      Okrągła komnata u podstawy wieży. Ktoś zamienił ją w małą pracownię —
+      stoły zastawione retortami, kolbami, rzędami flakoników. Regały z ziołami
+      i tajemniczymi mieszaninami. W rogu drabina prowadzi na górę.
+    exits:
+      dół: wiezba_parter
+      góra: wiezba_gore
+    items:
+      - id: zestaw_fiolek
+        name: "zestaw fiolek"
+        hint: "zestaw małych szklanych fiolek na stole alchemika"
+        description: "Kilka małych szklanych fiolek z korkami — idealny pojemnik na próbki cieczy lub substancji."
+        takeable: true
+    npcs: []
+    atmosphere: "zapach ziół i kwasów, bełkotanie gotujących się mieszanin, dziwne kolory"
+
+  wiezba_gore:
+    name: "Pokój Strażnika — Wieża"
+    image_variants:
+      - file: "wiezba_gore"
+        base: true
+        condition: null
+        label: "Górna komnata wieży"
+        prompt_extra: "mała okrągła komnata na szczycie wieży zamkowej, wąskie okno z widokiem na dziedziniec, stara skrzynia pod ścianą, na haku przy drabinie wisi rdzawy żelazny klucz, kamienna podłoga, stara latarnia"
+    description: |
+      Mała komnata na górze wieży. Przez wąskie okno widać cały dziedziniec.
+      Pod ścianą stara skrzynia. Na haku przy drabinie wisi rdzawy klucz.
+    exits:
+      dół: wiezba
+    items:
+      - id: klucz_celi
+        name: "klucz do celi"
+        hint: "rdzawy klucz na haku przy drabinie"
+        description: "Stary, rdzawy klucz. Ciężki. Pewnie do kłódki w lochach."
+        takeable: true
+    npcs: []
+    atmosphere: "wiatr przez okno, widok na dziedziniec, cisza"
+
+  magazyn_ciemny:
+    name: "Ciemny Korytarz Zachodni"
+    image_variants:
+      - file: "magazyn_ciemny_lit"
+        condition: {inventory: "pochodnia"}
+        label: "Korytarz zachodni — z pochodnią"
+        prompt_extra: "ciemny kamienny korytarz zamkowy oświetlony pochodnią trzymaną w ręku, widać zakurzone mury i drzwi w głębi prowadzące do magazynów, długie cienie, brak pochodni na ścianie"
+      - file: "magazyn_ciemny"
+        base: true
+        condition: null
+        label: "Korytarz zachodni — ciemność"
+        prompt_extra: "nieprzenikniona ciemność w kamiennym korytarzu zamkowym, zero widoczności, tylko sylwetka postaci przy wejściu"
+    description_variants:
+      - condition: {inventory: "pochodnia"}
+        description: |
+          W świetle pochodni kamienny korytarz nabiera kształtów. Zakurzone mury,
+          pajęczyny, w głębi drzwi do magazynów. Droga na zachód jest teraz przejezdna.
+      - condition: null
+        description: |
+          Korytarz na zachód od dziedzińca. Kompletna ciemność — bez źródła światła
+          nie ruszysz się stąd dalej.
+    exits:
+      wschód: dziedziniec_zamku
+      zachód:
+        target: korytarz
+        requires: {inventory: "pochodnia"}
+        blocked_message: "Zbyt ciemno żeby iść dalej. Potrzebujesz źródła światła."
+    items: []
+    npcs: []
+    atmosphere: "nieprzenikniona ciemność, chłód, zapach kurzu i starych kamieni"
+
+  magazyn_glowny:
+    name: "Główny Składzik Zamkowy"
+    image_variants:
+      - file: "magazyn_glowny"
+        base: true
+        condition: null
+        label: "Składzik — pełny"
+        prompt_extra: "duży zamkowy składzik oświetlony pochodnią, stosy skrzyń z luksusowymi dobrami — jedwabie, dywany, cenne wazy, przy ścianie kilka beczek, jedna prawie pusta z ciemną lepką substancją, łom i kilof leżą na podłodze"
+    description: |
+      Duża komnata zastawiona skrzyniami i beczkami. Jedwabie, dywany, cenne wazy —
+      luksusowe dobra, najwyraźniej dopiero przywiezione. Pod ścianą rząd beczek.
+      Jedna jest prawie pusta — na dnie ciemna, lepka substancja o ostrym zapachu.
+      Przy wejściu leżą narzędzia: łom, kilof, łopata.
+    exits:
+      południe: korytarz
+    items:
+      - id: dobra_luksusowe
+        name: "skrzynie z dobrami"
+        hint: "stosy skrzyń — jedwabie, dywany, cenne wazy"
+        description: "Skrzynie pełne luksusowych towarów — jedwabie, dywany, złocone wazy. Bardzo drogie. Świeżo dostarczone — kurz jeszcze nie zdążył osiąść."
+        takeable: false
+      - id: probka_substancji
+        name: "próbka substancji"
+        hint: "fiolka z ciemną lepką substancją z beczki"
+        description: "Fiolka wypełniona ciemną, lepką substancją o metalicznym zapachu. Nie wiesz co to, ale ktoś tego potrzebuje."
+        takeable: true
+        hidden_when: {flag: fiolki_uzyte, value: null}
+      - id: lom
+        name: "łom"
+        hint: "łom leżący przy wejściu do składziku"
+        description: "Ciężki żelazny łom. Dobry do wyważania, kopania, i różnych innych zastosowań."
+        takeable: true
+      - id: kilof
+        name: "kilof"
+        hint: "kilof leżący przy wejściu"
+        description: "Solidny górniczy kilof. Nadaje się do rozbijania murów."
+        takeable: true
+    npcs:
+      - id: beczka_substancja
+        name: "beczka z substancją"
+        description: |
+          Prawie pusta beczka — na dnie ciemna, lepka masa o ostrym metalicznym zapachu.
+          Żeby zebrać próbkę potrzebujesz jakiegoś pojemnika.
+        state: "stoi"
+        scripted_solutions:
+          - id: bez_fiolek
+            requires: {inventory_missing: "zestaw fiolek"}
+            trigger: "gracz próbuje zebrać substancję, dotknąć beczki, wziąć zawartość"
+            outcome: |
+              Beczka jest prawie pusta — ciemna lepka masa klei się do dna.
+              Żeby zebrać próbkę potrzebujesz jakiegoś pojemnika. Może w alchemicznej
+              pracowni na wieży znajdzie się coś odpowiedniego?
+            flags: {}
+          - id: napelnij_fiolke
+            requires: {inventory: "zestaw fiolek"}
+            trigger: "gracz zbiera substancję, napełnia fiolkę, bierze próbkę z beczki"
+            outcome: |
+              Ostrożnie zanurzasz fiolkę w gęstej masie i zamykasz korkiem.
+              Substancja jest ciemna, gęsta, z metalicznym zapachem — nic podobnego
+              wcześniej nie widziałeś. Fiolka jest pełna.
+            flags: {fiolki_uzyte: true}
+            inventory_remove: ["zestaw fiolek"]
+            inventory_add: ["próbka substancji"]
+        creative_solutions_hint: |
+          Gracz nie może zebrać substancji gołymi rękami — potrzebuje pojemnika.
+          Fiolki z pracowni alchemika na wieży to jedyne rozwiązanie.
+          Po użyciu fiolek (fiolki_uzyte: true) próbka substancji pojawia się jako przedmiot.
+    atmosphere: "kurz, zapach jedwabiu i czegoś ostrego — metalicznego, niepokojący zapach z beczki"
+
+  cela_korytarz:
+    name: "Korytarz Wschodni — Cele"
+    image_variants:
+      - file: "cela_korytarz"
+        base: true
+        condition: null
+        label: "Korytarz cel"
+        prompt_extra: "mroczny korytarz zamkowego więzienia, po bokach zakratowane puste cele, na końcu jedna cela z zamkniętymi drzwiami, kamienna posadzka, wilgoć"
+    description: |
+      Mroczny korytarz z celami po obu stronach — większość pusta, drzwi otwarte.
+      Na końcu jedna cela zamknięta na klucz. Za kratami widać postać.
+    exits:
+      zachód: dziedziniec_zamku
+      północ: cela_przy_kratach
+    items: []
+    npcs: []
+    atmosphere: "wilgoć, zimno, kapanie wody, cisza przerywana odległym echem"
+
+  cela_przy_kratach:
+    name: "Przed Celą Więźnia"
+    image_variants:
+      - file: "cela_zamknieta"
+        base: true
+        condition: null
+        label: "Kraty — więzień za nimi"
+        prompt_extra: "widok z korytarza na zamkniętą celę więzienną — ZAMKNIĘTE grube żelazne kraty na pierwszym planie, ZA kratami skulony mężczyzna w łachmanach patrzy w stronę widza, słabe światło z małego zakratowanego okienka wysoko w tle, kamienne ściany pokryte mchem, kraty są zamknięte i masywne"
+    description: |
+      Stoisz przed ostatnią celą. Za ciężkimi kratami widać skuloną postać w łachmanach.
+      Unosi głowę na dźwięk twoich kroków.
+    exits:
+      południe: cela_korytarz
+      wejście:
+        target: cela_zamknieta
+        requires: {inventory: "klucz do celi"}
+        blocked_message: "Drzwi celi zamknięte na ciężką kłódkę. Potrzebujesz klucza."
+    items: []
+    npcs:
+      - id: agent
+        name: "Więzień"
+        description: |
+          Chudy mężczyzna za kratami, twarz poorana zmęczeniem. Oczy bystre mimo wycieńczenia.
+          Mówi mało, waży każde słowo. Rozmawiasz przez kraty — nie możesz mu nic podać
+          ani nic razem zrobić. Ale możesz się dowiedzieć czego potrzebuje.
+        state: "za_kratami"
+        scripted_solutions:
+          - id: otworz_cele
+            requires: {inventory: "klucz do celi"}
+            trigger: "gracz otwiera celę, wkłada klucz, otwiera drzwi, wchodzi do celi"
+            outcome: |
+              Wkładasz klucz do kłódki i przekręcasz — mechanizm ustępuje z głośnym
+              szczękiem. Drzwi celi otwierają się na oścież.
+            flags: {}
+            move_to: cela_zamknieta
+          - id: rozmowa_przez_kraty
+            allow_talk: true
+            trigger: "gracz zagaduje więźnia, pyta kim jest, co tu robi, jak mu pomóc, o zamku, o ucieczce"
+            outcome: |
+              Mężczyzna podchodzi do krat i mówi cicho: "Słuchaj uważnie. W zachodnim skrzydle
+              jest magazyn. Beczka — prawie pusta, ciemna lepka substancja. Przynieś próbkę.
+              I znajdź łom. Jak tu wrócisz z kluczem i tym wszystkim — pokażę ci wyjście."
+              Nie tłumaczy nic więcej. Ton nie pozostawia wątpliwości że wie co mówi.
+            flags: {agent_wskazowka: true}
+        creative_solutions_hint: |
+          Gracz może otworzyć celę kluczem do celi (scripted_solution otworz_cele).
+          Przez kraty można tylko rozmawiać — nie podawać przedmiotów. Więzień mówi
+          o próbce substancji z zachodniego magazynu i łomie. Żeby cokolwiek zrobić
+          gracz musi wejść do celi kluczem.
+    atmosphere: "wilgoć, zimno, kapanie wody, cień za kratami"
+
+  cela_zamknieta:
+    name: "Otwarta Cela"
+    image_variants:
+      - file: "cela_otwarta"
+        base: true
+        condition: null
+        label: "Cela — otwarta, więzień w środku"
+        prompt_extra: "ciemna wilgotna cela więzienna w zamku, otwarte masywne drzwi z kratami, mężczyzna w łachmanach stoi przy zachodniej ścianie z luźnymi cegłami, widać jego twarz z nadzieją, słabe światło z góry, gotowy do działania"
+    description: |
+      Wchodzisz do celi. Więzień natychmiast staje — jest gotowy do działania.
+      Zachodnia ściana wygląda podejrzanie, cegły są luźniejsze niż reszta.
+    exits:
+      wyjście: cela_przy_kratach
+    items: []
+    npcs:
+      - id: agent_wolny
+        name: "Więzień"
+        description: |
+          Teraz jesteś w celi razem z nim. Możesz mu dać przedmioty i działać razem.
+          Czeka na próbkę substancji z zachodniego magazynu i łom do przebicia ściany.
+        state: "uwieziony"
+        scripted_solutions:
+          - id: bez_probki
+            requires: {inventory_missing: "próbka substancji"}
+            allow_talk: true
+            trigger: "gracz pyta o ucieczkę, oferuje narzędzia, proponuje pomoc"
+            outcome: |
+              "Mówiłem przez kraty — próbka najpierw. Bez niej nie ruszam się stąd."
+              Wskazuje na zachodnią ścianę. "Ta ściana da się przebić. Ale potrzebuję
+              tej substancji. Idź do zachodniego magazynu."
+            flags: {}
+          - id: podkop_start
+            requires: {inventory: "próbka substancji"}
+            allow_talk: true
+            trigger: "gracz podaje próbkę i łom, proponuje kopanie lub ucieczkę"
+            outcome: |
+              Więzień widzi próbkę — oczy błyskają. "W końcu." Chowa ją za pazuchę,
+              chwyta łom i uderza w ścianę. Cegły osuwają się jedna po drugiej.
+              Wąski czarny otwór — tunel. "Ty pierwszy" — wskazuje bez słowa.
+            flags: {tunel_wydrązony: true}
+            inventory_remove: ["łom"]
+            move_to: tunel_ucieczki
+        creative_solutions_hint: |
+          Teraz gracz jest w celi z więźniem — może podawać przedmioty.
+          Próbka substancji z zachodniego magazynu + łom = przebita ściana i tunel.
+          Bez próbki więzień nie ruszy się z miejsca, choćby miał wszystkie narzędzia świata.
+    atmosphere: "wilgoć, mężczyzna gotowy do działania, zachodnia ściana do przebicia"
+
+  tunel_ucieczki:
+    name: "Tunel Pod Murem"
+    image_variants:
+      - file: "tunel_ucieczki"
+        base: true
+        condition: null
+        label: "Tunel — wyjście na zewnątrz"
+        prompt_extra: "wąski ziemny tunel pod kamiennym murem zamkowym, wykopany ręcznie, mokre ściany z cegieł, w oddali szara jasność — wyjście na zewnątrz, gęsty las za murem"
+    description: |
+      Ciasny, ziemny tunel przebity przez fundamenty muru. Zapach mokrej gliny
+      i kamienia. Musisz się czołgać — ale na końcu widać szare światło dnia.
+      Więzień ciągnie za tobą, żadnego słowa.
+    exits:
+      przód: las2
+    items: []
+    npcs: []
+    atmosphere: "ciasnota, glina, nadzieja — wyjście blisko"
+
+  # ===== POZIOM 2: LAS ZA ZAMKIEM =====
+
+  las2:
+    name: "Las Za Zamkiem"
+    image_variants:
+      - file: "las2"
+        base: true
+        condition: null
+        label: "Las za zamkiem — zwykły liściasty"
+        prompt_extra: "jasny liściasty las za murami zamku, brzozowe i grabowe drzewa, zielone listowie przepuszcza słońce, miękka trawa, ptaki śpiewają, spokojna leśna polana"
+    description: |
+      Wychodzisz na wolne powietrze. Zwykły, liściasty las — brzozy i graby,
+      zielone listowie przepuszcza majowe słońce. Ptaki śpiewają. Po twoich plecach
+      widać szare mury zamku, ale już za tobą. Więzień staje obok, oddycha głęboko.
+      "Dalej na wschód jest miasto" — mówi po chwili ciszy.
+    exits:
+      wschód: miasto_las2
+    items: []
+    npcs: []
+    atmosphere: "wolność, słońce przez liście, ptaki, cisza po tym co było"
 
   # ===== POZIOM 1: MIASTO =====
 
@@ -798,12 +1175,10 @@ locations:
             allow_talk: true
             trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, albo o królową"
             outcome: |
-              Bolesław odkłada kufel i ścisza głos. "Karawana? Przejeżdżali tydzień temu,
-              nocą, bez zatrzymania. Nikt nie wiedział co wiozą." Macza palec w piwie.
-              "Słuchaj... skoro pytasz o Królową — jej ojciec był okrutny jak zima.
-              Bili ją, dworska szlachta się z niej śmiała — córka pomniejszego szlachcica
-              bez grosza. Wykuła z tego serce zimne jak stal." Wyciera ladę.
-              "Tyle co wiem. Resztę pytaj kogoś innego."
+              O karawanie: przejeżdżali tydzień temu, nocą, bez zatrzymania — nikt nie wiedział co wiozą.
+              O Królowej (podaje to W ZAUFANIU, nie jako odpowiedź na pytanie — chyba że gracz zapytał wprost):
+              jej ojciec był okrutny, dworska szlachta się z niej śmiała, wykuła z tego serce zimne jak stal.
+              Mówi krótko i wraca do roboty. Więcej nie powie.
             flags: {pytanie_karczma: true}
         creative_solutions_hint: |
           Karczmarz wie dużo ale mówi mało. Można go przekupić, zastraszać nie ma sensu.
@@ -859,13 +1234,11 @@ locations:
             allow_talk: true
             trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, o królową lub o sprawy królewskie"
             outcome: |
-              Feliks nerwowo odkłada pióro. "Karawana? Nie wiem nic o żadnej karawanie.
-              To sprawy królewskie — nie moja kompetencja." Rozgląda się po sali.
-              "Ale... skoro pytasz. Dziesięć lat temu flota najeźdźców z północy.
-              Nasze wojska klęskły, stary król uciekł. Wszystko się waliło."
-              Ścisza głos. "Miała wtedy dwadzieścia lat. Zebrała resztki wojska,
-              odparła najazd sama. Weszła do stolicy jako zbawczyni. Lud sam dał jej koronę."
-              Wraca do dokumentów. "I tyle historii. Idź pan stąd."
+              O karawanie: zaprzecza że cokolwiek wie, to sprawy królewskie poza jego kompetencją.
+              O Królowej (mówi to MIMO WOLI, jakby sam siebie zaskoczył — chyba że gracz zapytał wprost):
+              dziesięć lat temu najeźdźcy z północy, wojska klęskły, stary król uciekł —
+              miała dwadzieścia lat, zebrała resztki wojska, odparła najazd sama,
+              lud dał jej koronę. Wraca do dokumentów, zamyka temat.
             flags: {pytanie_ratusz: true}
         creative_solutions_hint: |
           Urzędnik jest tchórzliwy ale uczciwy. Zastraszanie nie działa — jest już wystraszony.
@@ -902,13 +1275,12 @@ locations:
             allow_talk: true
             trigger: "gracz pyta o karawanę królewską, o zaginiony żołd lub o królową"
             outcome: |
-              Jadwiga pochyla się nad stoiskiem i ścisza głos. "Karawana? Słyszałam
-              że ostatnio jeżdżą nocami tylko. Coś wiozą czego nie chcą pokazywać."
-              Macha ręką. "Ale pytasz o Królową? Trzy lata po tym jak nas uratowała —
-              chłopi wstali. Podatki, głód, niesprawiedliwość. Wiesz co zrobiła
-              ta co ich uratowała?" Milknie. "Rozbiła ich. Doszczętnie. Powiedziała
-              że czarną niewdzięcznością jej się odwdzięczyli." Cofa się. "Tyle mówię.
-              Reszty nie pytaj — mam dzieci do wykarmienia."
+              O karawanie: jeżdżą nocami, coś wiozą czego nie chcą pokazywać — tyle wie.
+              O Królowej (rzuca to Z WŁASNEJ INICJATYWY, nagle, jakby długo chciała to powiedzieć
+              — chyba że gracz zapytał wprost): trzy lata po tym jak uratowała kraj,
+              chłopi się zbuntowali — podatki, głód. Rozbiła ich doszczętnie,
+              powiedziała że czarną niewdzięcznością się odwdzięczyli.
+              Urywa, cofa się — mówi że ma dzieci i więcej nie pyta.
             flags: {pytanie_targowisko: true}
         creative_solutions_hint: |
           Jadwiga boi się ale jest gadatliwa. Można ją zachęcić drobnym zakupem
@@ -946,12 +1318,11 @@ locations:
             allow_talk: true
             trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, o królową lub o wyjazd z miasta"
             outcome: |
-              Strażnik patrzy na ciebie długo zanim odpowie. "Karawana królewska
-              to tajne sprawy. Nie pytaj." Pauza. "I tak w ogóle — za dużo ludzi
-              ostatnio pyta o nie swoje sprawy. Znikają potem."
-              Odwraca się przodem do bramy. Mruczy jakby do siebie:
-              "Podatki co rok wyższe. Wioski które nie płacą — zostają same ściany.
-              A kto coś powie..." Urywa. "Idź sobie. I nie pytaj o karawany."
+              O karawanie i wyjściu z miasta: odpowiada twardo, to tajne sprawy królewskie —
+              za dużo ludzi pyta o nie swoje sprawy i znikają.
+              O Królowej (mówi to JAKBY DO SIEBIE, odwrócony — chyba że gracz zapytał wprost):
+              podatki co rok wyższe, wioski które nie płacą zostają puste ściany,
+              kto coś powie... urywa. Odsyła gracza, kończy rozmowę.
             flags: {pytanie_brama: true}
         creative_solutions_hint: |
           Strażnik jest lojalny ale ma sumienie. Przekupstwo nie wchodzi w grę.

@@ -26,7 +26,7 @@ const inventoryList  = document.getElementById('inventory-list');
 const ITEM_ICONS = {
   'stary kij':          '🪵',
   'zardzewiały miecz':  '⚔️',
-  'sakiewka ze złotem': '💰',
+  'złota moneta': '🪙',
   'zioła lecznicze':    '🌿',
 };
 
@@ -245,6 +245,21 @@ document.getElementById('ending-restart').addEventListener('click', () => startN
   } catch {
     addMessage('Nie można połączyć się z serwerem gry. Upewnij się że backend działa.', 'gm');
   }
+})();
+
+// ── INTRO CUT SCENE ──
+(function () {
+  const overlay = document.getElementById('intro-overlay');
+  const video   = document.getElementById('intro-video');
+  const skipBtn = document.getElementById('intro-skip');
+
+  function dismissIntro() {
+    overlay.style.display = 'none';
+  }
+
+  video.addEventListener('ended', dismissIntro);
+  skipBtn.addEventListener('click', dismissIntro);
+  video.addEventListener('error', dismissIntro);
 })();
 
 // Eksport dla voice.js

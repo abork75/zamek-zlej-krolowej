@@ -41,13 +41,13 @@ def _check_image_condition(cond, flags: dict, inventory: list) -> bool:
         elif flag_val != cond.get("value"):
             return False
 
-    # inventory checks
-    if "inventory_contains" in cond:
-        if cond["inventory_contains"] not in inventory:
-            return False
-    if "inventory_missing" in cond:
-        if cond["inventory_missing"] in inventory:
-            return False
+    # inventory checks (obsługuje oba klucze: inventory i inventory_contains)
+    item_has = cond.get("inventory") or cond.get("inventory_contains")
+    if item_has and item_has not in inventory:
+        return False
+    item_miss = cond.get("inventory_missing")
+    if item_miss and item_miss in inventory:
+        return False
 
     return True
 

@@ -68,27 +68,33 @@ def apply_city_arrest_mechanic(state: dict, world: dict) -> None:
         state["flags"][mechanic["sets_flag"]] = True
 
 
-def check_condition(req: dict, flags: dict) -> bool:
+def check_condition(req: dict, flags: dict, inventory: list | None = None) -> bool:
     """Sprawdza czy warunek przejścia jest spełniony."""
     if not req:
+        return True
+    if "inventory" in req:
+        return inventory is not None and req["inventory"] in inventory
+    if "inventory_missing" in req:
+        return inventory is None or req["inventory_missing"] not in inventory
+    if "flag" not in req:
         return True
     flag_val = flags.get(req["flag"])
     if "values" in req:
         return flag_val in req["values"]
-    return flag_val == req["value"]
+    return flag_val == req.get("value")
 
 
-def resolve_description(location: dict, flags: dict) -> str:
-    """Zwraca opis lokacji pasujący do aktualnych flag (pierwszy pasujący wariant)."""
+def resolve_description(location: dict, flags: dict, inventory: list | None = None) -> str:
+    """Zwraca opis lokacji pasujący do aktualnych flag i ekwipunku (pierwszy pasujący wariant)."""
     for variant in location.get("description_variants", []):
         cond = variant.get("condition")
-        if cond is None or check_condition(cond, flags):
+        if cond is None or check_condition(cond, flags, inventory):
             return variant["description"]
     # Fallback: stare pole description (kompatybilność wsteczna)
     return location.get("description", "")
 
 
-def resolve_exits(location: dict, flags: dict) -> tuple[dict, list[str]]:
+def resolve_exits(location: dict, flags: dict, inventory: list | None = None) -> tuple[dict, list[str]]:
     """
     Zwraca (dostępne_wyjścia, lista_komunikatów_blokad).
     Wyjścia hidden=true są niewidoczne dopóki nie są odblokowane.
@@ -100,7 +106,7 @@ def resolve_exits(location: dict, flags: dict) -> tuple[dict, list[str]]:
             continue
         if isinstance(exit_def, dict):
             req = exit_def.get("requires")
-            if req and not check_condition(req, flags):
+            if req and not check_condition(req, flags, inventory):
                 if not exit_def.get("hidden"):
                     blocked_msgs.append(exit_def.get("blocked_message", f"Kierunek {direction} jest zablokowany."))
                 continue

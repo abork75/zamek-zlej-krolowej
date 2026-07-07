@@ -13,12 +13,15 @@
     /* KOLUMNA 1: graf */
     #graph-panel {
       flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
       border: 1px solid #3a2e1e;
       border-radius: 4px;
       background: #0d0900;
       overflow: hidden;
     }
-    #graph-canvas { width: 100%; height: 100%; }
+    #graph-canvas { flex: 1; min-height: 0; display: block; width: 100%; }
 
     /* KOLUMNA 2: stan gry */
     #info-panel {
@@ -123,6 +126,16 @@
     #game-switch-btn:hover { background: #2a1400; }
     #active-game-badge { font-size: 0.62rem; color: #6a9a9a; }
 
+    #loc-tiles { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+    .loc-tile {
+      padding: 4px 8px; font-size: 0.65rem; cursor: pointer; border-radius: 2px;
+      background: #0d0900; border: 1px solid #2a1e0e; color: #7a6a50;
+      text-align: left; font-family: 'Courier New', monospace; transition: all 0.15s;
+    }
+    .loc-tile:hover { background: #1a1000; border-color: #8a4a00; color: #d4a843; }
+    .loc-tile.current { background: #1a1000; border-color: #d4a843; color: #d4a843; font-weight: bold; }
+    .loc-tile-section { font-size: 0.6rem; color: #3a2e1e; padding: 4px 0 2px; letter-spacing: 1px; text-transform: uppercase; }
+
     .legend { display: flex; flex-direction: column; gap: 4px; font-size: 0.7rem; }
     .legend-row { display: flex; align-items: center; gap: 6px; }
     .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
@@ -191,6 +204,10 @@
       </div>
       <div id="active-game-badge"></div>
     </div>
+    <div class="panel-box scrollable">
+      <h2>Teleport</h2>
+      <div id="loc-tiles"><span style="color:#3a2e1e;font-size:0.65rem">Ładowanie…</span></div>
+    </div>
     <div class="panel-box">
       <h2>Lokacja gracza</h2>
       <div class="location-badge" id="current-loc">—</div>
@@ -221,10 +238,7 @@
   <div id="image-panel">
     <div class="panel-box scrollable">
       <h2>Warianty obrazków <span id="focused-badge" class="focused-badge"></span> <button id="teleport-btn" style="display:none"></button></h2>
-      <div class="tab-bar">
-        <button class="tab-btn active" id="tab-las" onclick="switchTab('las')">🌲 LAS</button>
-        <button class="tab-btn" id="tab-miasto" onclick="switchTab('miasto')">🏘️ MIASTO</button>
-      </div>
+      <div class="tab-bar" id="tab-bar"></div>
       <div id="variants-table"></div>
     </div>
     <div class="panel-box scrollable">
@@ -244,21 +258,42 @@
 </div>
 
 <script>
-let NODE_POS_LAS = {};
-let NODE_POS_MIASTO = {};
+let mapLevels = {};   // { levelId: { label, nodes: {locId: {x,y}} } }
+let activeTab = 'las';
 
-const NODE_POS = new Proxy({}, {
-  get(_, key) {
-    return activeTab === 'miasto' ? NODE_POS_MIASTO[key] : NODE_POS_LAS[key];
+function getNodePos(id) {
+  return (mapLevels[activeTab]?.nodes || {})[id];
+}
+
+function buildTabs() {
+  const bar = document.getElementById('tab-bar');
+  const icons = { las: '🌲', zamek: '🏰', miasto: '🏘️' };
+  bar.innerHTML = Object.entries(mapLevels).map(([id, lvl]) =>
+    `<button class="tab-btn ${id === activeTab ? 'active' : ''}" id="tab-${id}" onclick="switchTab('${id}')">${icons[id] || '📍'} ${lvl.label.toUpperCase()}</button>`
+  ).join('');
+}
+
+function buildLocTiles(currentLoc) {
+  const container = document.getElementById('loc-tiles');
+  if (!Object.keys(mapLevels).length) return;
+  let html = '';
+  for (const [levelId, lvl] of Object.entries(mapLevels)) {
+    html += `<div class="loc-tile-section">${lvl.label}</div>`;
+    for (const locId of Object.keys(lvl.nodes)) {
+      const isCur = locId === currentLoc;
+      html += `<button class="loc-tile ${isCur ? 'current' : ''}" onclick="teleport('${locId}')">${locId}</button>`;
+    }
   }
-});
+  container.innerHTML = html;
+}
 
 async function loadMapConfig() {
   try {
     const res = await fetch('/api/map-config');
     const cfg = await res.json();
-    NODE_POS_LAS    = cfg.levels?.las?.nodes    || {};
-    NODE_POS_MIASTO = cfg.levels?.miasto?.nodes || {};
+    mapLevels = cfg.levels || {};
+    if (!mapLevels[activeTab]) activeTab = Object.keys(mapLevels)[0] || 'las';
+    buildTabs();
   } catch(e) {
     console.error('Błąd ładowania map-config:', e);
   }
@@ -341,7 +376,7 @@ function handleCanvasClick(e) {
 
   let hit = null;
   lastData.nodes.forEach(n => {
-    const p = NODE_POS[n.id];
+    const p = getNodePos(n.id);
     if (!p) return;
     const nx = p.x * W, ny = p.y * H;
     if (Math.sqrt((mx-nx)**2 + (my-ny)**2) < 28) hit = n.id;
@@ -391,29 +426,89 @@ function draw(data) {
   lastData = data;
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
+
+  if (W < 10 || H < 10) {
+    ctx.fillStyle = '#c84a4a'; ctx.font = '13px Courier New'; ctx.textAlign = 'left';
+    ctx.fillText(`Canvas zbyt mały: ${W}x${H}`, 10, 20);
+    return;
+  }
+
   ctx.save(); ctx.translate(panX, panY); ctx.scale(scale, scale);
 
   const pos = {};
   data.nodes.forEach(n => {
-    const p = NODE_POS[n.id];
+    const p = getNodePos(n.id);
     if (!p) return;
     pos[n.id] = { x: p.x * W, y: p.y * H, label: n.label, current: n.current };
   });
 
+  if (Object.keys(pos).length === 0) {
+    ctx.restore();
+    ctx.fillStyle = '#c8a050'; ctx.font = '12px Courier New'; ctx.textAlign = 'left';
+    ctx.fillText(`Brak węzłów dla zakładki: "${activeTab}"  (${W}x${H})`, 10, 20);
+    ctx.fillText(`mapLevels keys: ${Object.keys(mapLevels).join(', ') || '(pusty)'}`, 10, 38);
+    ctx.fillText(`nodes in tab: ${Object.keys(mapLevels[activeTab]?.nodes || {}).join(', ') || '(brak)'}`, 10, 56);
+    ctx.fillText(`Węzłów z API: ${data.nodes.length}`, 10, 74);
+    return;
+  }
+
+  // Zbierz węzły aktywnego poziomu
+  const levelNodes = new Set(Object.keys(mapLevels[activeTab]?.nodes || {}));
+
   // Scalamy pary A↔B w jedną linię (kolor = min waga — czerwona jeśli któryś kierunek zablokowany)
   const drawn = new Set();
   data.edges.forEach(e => {
-    const from = pos[e.from], to = pos[e.to];
+    const isScripted = e.type === 'scripted';
+    const isCrossArea = !levelNodes.has(e.to);
+    const from = pos[e.from];
+    const to = pos[e.to];
+
+    // Krawędź scripted cross-area: strzałka wychodząca z węzła z etykietą
+    if (isScripted && isCrossArea && from) {
+      ctx.save();
+      ctx.strokeStyle = '#c84a4a';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      const ex = from.x + 55, ey = from.y - 55;
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(ex, ey); ctx.stroke();
+      // grot strzałki
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#c84a4a';
+      ctx.beginPath(); ctx.arc(ex, ey, 4, 0, Math.PI*2); ctx.fill();
+      ctx.font = '9px Courier New'; ctx.textAlign = 'left';
+      ctx.fillText(`→ ${e.to}`, ex + 6, ey + 4);
+      ctx.restore();
+      return;
+    }
+
     if (!from || !to || to.y < 20 || from.y < 20) return;
+
+    // Krawędź scripted (w obrębie obszaru): przerywana czerwona
+    if (isScripted) {
+      const pairKey = 'scripted|' + e.from + '|' + e.to;
+      if (drawn.has(pairKey)) return;
+      drawn.add(pairKey);
+      ctx.save();
+      ctx.strokeStyle = '#c84a4a';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+      ctx.setLineDash([]);
+      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
+      ctx.fillStyle = '#c84a4a'; ctx.font = '9px Courier New'; ctx.textAlign = 'center';
+      ctx.fillText(e.label, mx + 10, my - 5);
+      ctx.restore();
+      return;
+    }
+
     const pairKey = [e.from, e.to].sort().join('|');
     if (drawn.has(pairKey)) return;
     drawn.add(pairKey);
 
-    const reverse = data.edges.find(r => r.from === e.to && r.to === e.from);
+    const reverse = data.edges.find(r => r.from === e.to && r.to === e.from && r.type !== 'scripted');
     const minWeight = Math.min(e.weight, reverse ? reverse.weight : 1);
     const open = minWeight === 1;
 
-    const dx = to.x - from.x, dy = to.y - from.y;
     ctx.save();
     ctx.strokeStyle = open ? '#4a8a4a' : '#8a2020';
     ctx.lineWidth = open ? 2 : 1.5;
@@ -453,6 +548,7 @@ function updateInfo(data) {
   const locNode = data.nodes.find(n => n.current);
   document.getElementById('current-loc').textContent = locNode ? locNode.label : '—';
   document.getElementById('turn-info').textContent = `Tura: ${data.state.turn}`;
+  buildLocTiles(locNode?.id);
   const inv = data.state.inventory;
   document.getElementById('inventory').innerHTML = inv.length
     ? inv.map(i => `<div class="inv-item">▸ ${i}</div>`).join('')
@@ -466,14 +562,11 @@ function updateInfo(data) {
 let prevFlags = null;
 const eventLog = [];
 
-const MIASTO_LOCS = new Set(['pokoj_karczmy','karczma','ulica','ratusz','targowisko','zaulek','brama_miasta','transport_wiezniarski']);
-let activeTab = 'las';
 let lastVariantsData = null;
 
 function switchTab(tab) {
   activeTab = tab;
-  document.getElementById('tab-las').classList.toggle('active', tab === 'las');
-  document.getElementById('tab-miasto').classList.toggle('active', tab === 'miasto');
+  buildTabs();
   scale = 1; panX = 0; panY = 0;
   if (lastData) draw(lastData);
   if (lastVariantsData) renderVariants(lastVariantsData);
@@ -481,7 +574,8 @@ function switchTab(tab) {
 
 function renderVariants(locs) {
   const el = document.getElementById('variants-table');
-  const filtered = locs.filter(loc => activeTab === 'miasto' ? MIASTO_LOCS.has(loc.loc_id) : !MIASTO_LOCS.has(loc.loc_id));
+  const tabNodes = new Set(Object.keys(mapLevels[activeTab]?.nodes || {}));
+  const filtered = locs.filter(loc => tabNodes.has(loc.loc_id));
   el.innerHTML = filtered.map(loc => `
     <div class="loc-section" data-loc-id="${loc.loc_id}">
       <div class="loc-title">📍 ${loc.loc_name}</div>
