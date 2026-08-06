@@ -186,7 +186,10 @@
   </style>
 </head>
 <body>
-<h1>🗺 Debug — Zamek Złej Królowej</h1>
+<h1>🗺 Debug — Zamek Złej Królowej
+  <!-- TYMCZASOWE — przełącznik widoczności liczników debugowych na ekranie gry, usunąć razem z resztą po testach -->
+  <button id="toggle-debug-counters-btn" style="margin-left:14px;background:#1a1000;border:1px solid #8a6020;color:#c8b89a;padding:4px 10px;font-family:'Courier New',monospace;font-size:0.65rem;cursor:pointer;border-radius:2px;letter-spacing:1px;vertical-align:middle">Ukryj liczniki</button>
+</h1>
 <div id="layout">
 
   <!-- KOLUMNA 1: Graf -->
@@ -258,6 +261,21 @@
 </div>
 
 <script>
+// TYMCZASOWE — przełącznik widoczności liczników debugowych na ekranie gry (localStorage, wspólny origin)
+(function () {
+  const btn = document.getElementById('toggle-debug-counters-btn');
+  function refreshLabel() {
+    const hidden = localStorage.getItem('debug_counters_hidden') === '1';
+    btn.textContent = hidden ? 'Pokaż liczniki' : 'Ukryj liczniki';
+  }
+  btn.addEventListener('click', () => {
+    const hidden = localStorage.getItem('debug_counters_hidden') === '1';
+    localStorage.setItem('debug_counters_hidden', hidden ? '0' : '1');
+    refreshLabel();
+  });
+  refreshLabel();
+})();
+
 let mapLevels = {};   // { levelId: { label, nodes: {locId: {x,y}} } }
 let activeTab = 'las';
 
@@ -459,43 +477,55 @@ function draw(data) {
   const drawn = new Set();
   data.edges.forEach(e => {
     const isScripted = e.type === 'scripted';
+    const isTrap = e.type === 'trap';
+    const isEntryOnly = e.type === 'entry_only';
+    const specialColor = isTrap ? '#a84ac8' : (isEntryOnly ? '#c8a04a' : '#c84a4a');
     const isCrossArea = !levelNodes.has(e.to);
     const from = pos[e.from];
     const to = pos[e.to];
 
-    // Krawędź scripted cross-area: strzałka wychodząca z węzła z etykietą
-    if (isScripted && isCrossArea && from) {
+    // Krawędź scripted/pułapka/entry_only cross-area: strzałka wychodząca z węzła z etykietą
+    if ((isScripted || isTrap || isEntryOnly) && isCrossArea && from) {
       ctx.save();
-      ctx.strokeStyle = '#c84a4a';
+      ctx.strokeStyle = specialColor;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 5]);
       const ex = from.x + 55, ey = from.y - 55;
       ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(ex, ey); ctx.stroke();
       // grot strzałki
       ctx.setLineDash([]);
-      ctx.fillStyle = '#c84a4a';
+      ctx.fillStyle = specialColor;
       ctx.beginPath(); ctx.arc(ex, ey, 4, 0, Math.PI*2); ctx.fill();
       ctx.font = '9px Courier New'; ctx.textAlign = 'left';
-      ctx.fillText(`→ ${e.to}`, ex + 6, ey + 4);
+      ctx.fillText(`${isTrap ? 'pułapka' : '→'} ${e.to}`, ex + 6, ey + 4);
       ctx.restore();
       return;
     }
 
     if (!from || !to || to.y < 20 || from.y < 20) return;
 
-    // Krawędź scripted (w obrębie obszaru): przerywana czerwona
-    if (isScripted) {
-      const pairKey = 'scripted|' + e.from + '|' + e.to;
+    // Krawędź scripted/pułapka/entry_only (w obrębie obszaru): przerywana, strzałka pokazuje kierunek
+    if (isScripted || isTrap || isEntryOnly) {
+      const pairKey = (isTrap ? 'trap|' : isEntryOnly ? 'entry_only|' : 'scripted|') + e.from + '|' + e.to;
       if (drawn.has(pairKey)) return;
       drawn.add(pairKey);
       ctx.save();
-      ctx.strokeStyle = '#c84a4a';
+      ctx.strokeStyle = specialColor;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 5]);
       ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
       ctx.setLineDash([]);
+      // grot strzałki przy celu, żeby było widać kierunek (skąd -> dokąd)
+      const angle = Math.atan2(to.y - from.y, to.x - from.x);
+      const ax = to.x - Math.cos(angle) * 22, ay = to.y - Math.sin(angle) * 22;
+      ctx.fillStyle = specialColor;
+      ctx.beginPath();
+      ctx.moveTo(ax + Math.cos(angle) * 10, ay + Math.sin(angle) * 10);
+      ctx.lineTo(ax + Math.cos(angle - 2.6) * 6, ay + Math.sin(angle - 2.6) * 6);
+      ctx.lineTo(ax + Math.cos(angle + 2.6) * 6, ay + Math.sin(angle + 2.6) * 6);
+      ctx.closePath(); ctx.fill();
       const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
-      ctx.fillStyle = '#c84a4a'; ctx.font = '9px Courier New'; ctx.textAlign = 'center';
+      ctx.fillStyle = specialColor; ctx.font = '9px Courier New'; ctx.textAlign = 'center';
       ctx.fillText(e.label, mx + 10, my - 5);
       ctx.restore();
       return;
@@ -505,8 +535,10 @@ function draw(data) {
     if (drawn.has(pairKey)) return;
     drawn.add(pairKey);
 
-    const reverse = data.edges.find(r => r.from === e.to && r.to === e.from && r.type !== 'scripted');
-    const minWeight = Math.min(e.weight, reverse ? reverse.weight : 1);
+    const reverse = data.edges.find(r => r.from === e.to && r.to === e.from && r.type !== 'scripted' && r.type !== 'entry_only');
+    // brak wyjścia w kierunku powrotnym to NIE to samo co otwarte wyjście — domyślaj do 0 (zablokowane/
+    // jednokierunkowe), inaczej ścieżki jednokierunkowe (np. kanały -> dziedziniec) fałszywie świecą się na zielono
+    const minWeight = Math.min(e.weight, reverse ? reverse.weight : 0);
     const open = minWeight === 1;
 
     ctx.save();

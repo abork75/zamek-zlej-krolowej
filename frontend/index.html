@@ -6,6 +6,11 @@
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+  <!-- TYMCZASOWE — liczniki do testów mechaniki aresztowania, usunąć razem z CSS/JS po testach -->
+  <div id="debug-counters">
+    <div id="debug-arrest-counter">Aresztowanie: 0/4</div>
+    <div id="debug-step-counter">Kroki: 0</div>
+  </div>
   <div id="game">
 
     <header>
@@ -71,7 +76,7 @@
   </div>
 
   <div id="intro-overlay">
-    <video id="intro-video" src="/api/cut-scene/Intro.mp4" playsinline autoplay></video>
+    <video id="intro-video" src="/api/cut-scene/Intro.mp4" playsinline autoplay muted></video>
     <button id="intro-skip">Pomiń ›</button>
   </div>
 

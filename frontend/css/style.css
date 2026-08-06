@@ -1,5 +1,33 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* TYMCZASOWE — liczniki do testów mechaniki aresztowania, usunąć razem z HTML/JS po testach */
+#debug-counters {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+#debug-counters.debug-counters-hidden {
+  display: none;
+}
+
+#debug-arrest-counter,
+#debug-step-counter {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid #8a6020;
+  color: #c8b89a;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+}
+
 /* ── INTRO OVERLAY ── */
 #intro-overlay {
   position: fixed;

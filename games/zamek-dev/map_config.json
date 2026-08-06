@@ -10,33 +10,72 @@
         "wnetrze_hatki":     { "x": 0.22, "y": 0.93 },
         "most":              { "x": 0.45, "y": 0.60 },
         "zamek":             { "x": 0.45, "y": 0.42 },
-        "klatka_wieznia":    { "x": 0.64, "y": 0.42 }
+        "klatka_wieznia":    { "x": 0.64, "y": 0.42 },
+        "laka_ziolowa":      { "x": 0.80, "y": 0.93 }
       }
     },
     "zamek": {
       "label": "Zamek",
       "nodes": {
         "dziedziniec_zamku":  { "x": 0.45, "y": 0.82 },
-        "wiezba_parter":      { "x": 0.63, "y": 0.93 },
-        "wiezba":             { "x": 0.63, "y": 0.82 },
-        "wiezba_gore":        { "x": 0.63, "y": 0.68 },
+        "wiezba_parter":      { "x": 0.63, "y": 0.67 },
+        "wiezba":             { "x": 0.63, "y": 0.56 },
+        "wiezba_gore":        { "x": 0.63, "y": 0.42 },
         "korytarz_polnocny":  { "x": 0.45, "y": 0.67 },
         "sala_tronowa":       { "x": 0.45, "y": 0.52 },
-        "magazyn_ciemny":     { "x": 0.15, "y": 0.68 },
-        "korytarz":           { "x": 0.15, "y": 0.53 },
-        "magazyn_glowny":     { "x": 0.15, "y": 0.38 },
+        "magazyn_ciemny":     { "x": 0.15, "y": 0.82 },
+        "korytarz":           { "x": 0.15, "y": 0.67 },
+        "magazyn_glowny":     { "x": 0.15, "y": 0.52 },
         "loch":               { "x": 0.30, "y": 0.68 },
-        "kanaly":             { "x": 0.30, "y": 0.82 },
+        "kanaly":             { "x": 0.375, "y": 0.75 },
         "cela_korytarz":      { "x": 0.78, "y": 0.82 },
         "cela_przy_kratach":  { "x": 0.78, "y": 0.68 },
         "cela_zamknieta":     { "x": 0.93, "y": 0.68 },
-        "tunel_ucieczki":     { "x": 0.93, "y": 0.52 }
+        "tunel_wykop":        { "x": 0.93, "y": 0.88 },
+        "tunel_pajak":        { "x": 0.85, "y": 0.90 },
+        "tunel_ucieczki":     { "x": 0.70, "y": 0.90 },
+        "cela_pusta_1":       { "x": 0.78, "y": 0.95 },
+        "cela_korytarz_wschodni": { "x": 1.08, "y": 0.82 },
+        "cela_pusta_2":       { "x": 1.08, "y": 0.68 },
+        "cela_worek":         { "x": 1.08, "y": 0.95 }
       }
     },
     "las2": {
       "label": "Las Za Zamkiem",
       "nodes": {
-        "las2": { "x": 0.50, "y": 0.50 }
+        "las2":                 { "x": 0.50, "y": 0.90 },
+        "las01":                { "x": 0.50, "y": 0.75 },
+        "chatka_kostki":        { "x": 0.30, "y": 0.75 },
+        "centaur":              { "x": 0.30, "y": 0.55 },
+        "las03":                { "x": 0.12, "y": 0.55 },
+        "staw":                 { "x": 0.12, "y": 0.35 },
+        "kobold":               { "x": 0.50, "y": 0.55 },
+        "lesny_dziad":          { "x": 0.50, "y": 0.32 },
+        "polana_ivana":         { "x": 0.50, "y": 0.18 },
+        "wnetrze_chatki_ivana": { "x": 0.30, "y": 0.18 },
+        "las04":                { "x": 0.50, "y": 0.05 },
+        "driada":               { "x": 0.70, "y": 0.75 },
+        "las02":                { "x": 0.70, "y": 0.55 }
+      }
+    },
+    "pustynia": {
+      "label": "Pustynia",
+      "nodes": {
+        "pustynia":                 { "x": 0.50, "y": 0.75 },
+        "pustynia_wydmy":           { "x": 0.50, "y": 0.55 },
+        "wejscie_burzowe_piaski":   { "x": 0.30, "y": 0.55 },
+        "burzowe_piaski":           { "x": 0.12, "y": 0.55 },
+        "wejscie_podziemi":         { "x": 0.12, "y": 0.35 },
+        "straznik_duch_wladcy":     { "x": 0.12, "y": 0.18 },
+        "czarodziejka":             { "x": 0.12, "y": 0.10 },
+        "kowal":                    { "x": 0.30, "y": 0.10 },
+        "oaza_beduinow":            { "x": 0.50, "y": 0.35 },
+        "undead_warriors":          { "x": 0.30, "y": 0.35 },
+        "wrak_karawany":            { "x": 0.30, "y": 0.18 },
+        "ruiny_fortu":              { "x": 0.50, "y": 0.18 },
+        "skorpion_z_fortu":         { "x": 0.70, "y": 0.18 },
+        "zasypana_studnia":         { "x": 0.88, "y": 0.18 },
+        "uschle_drzewo":            { "x": 0.70, "y": 0.35 }
       }
     },
     "miasto": {

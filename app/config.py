@@ -8,6 +8,11 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 XAI_API_KEY: str = os.environ.get("XAI_API_KEY", "")
 GROK_MODEL: str  = os.environ.get("GROK_MODEL", "grok-3-fast")
 GROK_VOICE: str  = os.environ.get("GROK_VOICE", "grok-voice-latest")
+
+# Pamięć dialogowa NPC — ostatnie N wymian per NPC, dołączane do promptu GM.
+# Wyłącz globalnie przez NPC_DIALOGUE_MEMORY_ENABLED=false w .env, jeśli zacznie psuć narrację/koszt tokenów.
+NPC_DIALOGUE_MEMORY_ENABLED: bool = os.environ.get("NPC_DIALOGUE_MEMORY_ENABLED", "true").strip().lower() not in ("false", "0", "no")
+NPC_DIALOGUE_MEMORY_TURNS: int = int(os.environ.get("NPC_DIALOGUE_MEMORY_TURNS", "5"))
 IMAGE_STYLE: str = os.environ.get("IMAGE_STYLE", "mroczna ilustracja fantasy, styl akwarela, bez tekstu, bez napisów")
 IMAGE_STYLES: dict = {
     "akwarela": "mroczna ilustracja fantasy, styl akwarela, bez tekstu, bez napisów",

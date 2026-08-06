@@ -220,6 +220,42 @@ sala_tronowa:
 
 ---
 
+### W8 — Tłum
+
+**Definicja:** Lokacja z bezimiennym tłumem/przechodniami w tle, bez konkretnego, adresowalnego NPC (lub obok formalnego NPC — patrz kompozyt niżej). TALK bez trafienia w NPC nie kończy się sztywnym "Tu nikogo nie ma", tylko krótką, zmienną atmosferą.
+
+**Przykład w grze:** `ulica` (sama), `targowisko` (w kompozycie z NPC Jadwigą)
+
+**Kluczowe pola YAML:**
+```yaml
+nazwa_lokacji:
+  crowd: true
+  crowd_reaction_hint: "opcjonalny opis tonu tłumu — domyślnie generyczna obojętność"
+```
+
+**Zasada projektowa — nie mnożyć typów tłumu.** Nie twórz enuma "typów tłumu" (obojętny/wrogi/pijany/przestraszony).
+Ton wyłania się z `crowd_reaction_hint` (opcjonalne, wolny tekst) + `atmosphere`/`description` lokacji — tak jak reszta gry.
+Bez `crowd_reaction_hint` narrator używa generycznego "obojętny tłum, nikt się nie zatrzymuje".
+
+**Mechanizm:**
+- Lokacja bez NPC (`npcs: []`) + `crowd: true` → TALK zawsze trafia w tłum.
+- Lokacja z NPC + `crowd: true` (kompozyt z W3/W4/W6) → `classify_intent()` dostaje dodatkowe pole `crowd_target` w JSON, żeby rozróżnić "gracz zwraca się do konkretnego NPC" (`crowd_target: false`) od "gracz zwraca się do kogoś innego/anonimowego" (`crowd_target: true`). **Domyślne obciążenie: przy niejasności wygrywa konkretny NPC**, nie tłum — gracz musi jawnie zasygnalizować że nie zwraca się do niego ("zaczepiam kogoś innego", "pytam kogoś z tłumu").
+- Rozmowa z tłumem **nigdy nie zmienia stanu gry** — wymuszone w kodzie (`main.py`, gałąź `crowd_talk`), nie tylko w promptcie: po odpowiedzi narratora flagi/ekwipunek/lokacja są twardo przywracane do stanu sprzed tury, niezależnie od tego co Grok zwrócił w JSON-ie.
+- Rozmowa z tłumem pomija klasyfikację `scripted_solutions` NPC obecnego w lokacji — inaczej temat pasujący do triggera NPC (np. pytanie o karawanę) mógłby odpalić jego sekret mimo że gracz się do niego nie zwracał.
+
+**Ryzyko:** Średnie w kompozycie z NPC — klasyfikator musi poprawnie rozróżnić adresata przy niejasnych sformułowaniach.
+Niskie samodzielnie (bez NPC w lokacji) — nie ma kogo pomylić.
+
+**Test akceptacyjny:**
+- [ ] TALK bez adresata w lokacji `crowd: true` bez NPC → odpowiedź atmosferyczna, nie "Tu nikogo nie ma"
+- [ ] Ta sama fraza powtórzona kilka razy → różni się słownie (nie jest sztywnym stringiem)
+- [ ] Rozmowa z tłumem nie zmienia żadnej flagi ani ekwipunku (sprawdź `game_state.json` przed/po)
+- [ ] W kompozycie z NPC: zwrot ogólny bez sygnału → trafia w NPC (`talk_npc_id` ustawiony)
+- [ ] W kompozycie z NPC: jawny sygnał "kogoś innego" → trafia w tłum, `scripted_solution` NPC się NIE odpala nawet gdy temat pasuje do triggera
+- [ ] Lokacja bez `crowd: true` i bez NPC → zachowanie bez zmian ("Tu nikogo nie ma")
+
+---
+
 ## Poziom 2 — Wzorce Kompozytowe
 
 Kombinacje wzorców atomowych. **Wymagają osobnego scenariusza testowego** — złożoność nie jest addytywna, klasyfikator musi jednocześnie rozróżniać konteksty.
@@ -230,6 +266,7 @@ Kombinacje wzorców atomowych. **Wymagają osobnego scenariusza testowego** — 
 | W4 + W2 (Rozmówca + Quest item) | Narrator opisuje danie przedmiotu zanim gracz to zrobi? | `wnetrze_hatki` |
 | W5 + W3 (Pułapka + Strażnik) | Po pułapce gracz wraca — czy NPC stan zachowany? | — |
 | W3 + W6 (Strażnik + Informator) | Dwie grupy `scripted_solutions` — klasyfikator się nie myli? | `zamek` (brama + więzień) |
+| W4 + W8 (Rozmówca + Tłum) | Zwrot ogólny trafia w NPC czy w tłum? Tłum nie odpala `scripted_solution` NPC przez przypadek | `targowisko` (Jadwiga + tłum) |
 
 **Protokół testowy dla kompozytów:**
 1. Przetestuj każdy wzorzec składowy osobno

@@ -6,6 +6,20 @@ const resetBtn = document.getElementById('reset-btn');
 const locationEl = document.getElementById('location-name');
 const inventoryEl = document.getElementById('inventory-display');
 const exitsButtons = document.getElementById('exits-buttons');
+const debugArrestCounterEl = document.getElementById('debug-arrest-counter'); // TYMCZASOWE
+const debugStepCounterEl = document.getElementById('debug-step-counter'); // TYMCZASOWE
+const debugCountersEl = document.getElementById('debug-counters'); // TYMCZASOWE
+
+// TYMCZASOWE — widoczność liczników sterowana przełącznikiem w /debug (localStorage, wspólny origin)
+function applyDebugCountersVisibility() {
+  if (!debugCountersEl) return;
+  const hidden = localStorage.getItem('debug_counters_hidden') === '1';
+  debugCountersEl.classList.toggle('debug-counters-hidden', hidden);
+}
+applyDebugCountersVisibility();
+window.addEventListener('storage', (e) => {
+  if (e.key === 'debug_counters_hidden') applyDebugCountersVisibility();
+});
 
 function addMessage(text, type = 'gm') {
   const div = document.createElement('div');
@@ -50,6 +64,14 @@ function updateStatus(state) {
 
   // Przyciski wyjść
   updateExits(state);
+
+  // TYMCZASOWE — liczniki do testów mechaniki aresztowania
+  if (debugArrestCounterEl && state.debug_arrest_counter) {
+    debugArrestCounterEl.textContent = `Aresztowanie: ${state.debug_arrest_counter}`;
+  }
+  if (debugStepCounterEl && state.debug_step_counter !== undefined) {
+    debugStepCounterEl.textContent = `Kroki: ${state.debug_step_counter}`;
+  }
 
   // Obrazek — przy zmianie lokacji LUB zmianie aktywnego wariantu (np. troll pokonany)
   const activeImage = state.active_image || state.current_location;

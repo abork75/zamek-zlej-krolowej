@@ -819,6 +819,7 @@ locations:
       południe: targowisko
     items: []
     npcs: []
+    crowd: true
     atmosphere: "ruch poranny, bruk mokry od nocnego deszczu, zapach piekarni gdzieś w pobliżu"
 
   ratusz:
@@ -905,6 +906,8 @@ locations:
         creative_solutions_hint: |
           Jadwiga boi się ale jest gadatliwa. Można ją zachęcić drobnym zakupem
           lub po prostu słuchając uważnie. Zastraszanie zamknie jej usta.
+    crowd: true
+    crowd_reaction_hint: "gwarny tłum kupców i klientów, nikt nie ma czasu na obcego"
     atmosphere: "hałas, tłum, woń targowiska, szara codzienna bieda"
 
   brama_miasta:

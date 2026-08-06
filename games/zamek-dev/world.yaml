@@ -14,10 +14,67 @@ start_locations:
     description: "Zacznij na dziedzińcu — strażnik już odszedł"
     initial_flags:
       straznik_state: straznik_oszukany
+  - id: cela_korytarz_wschodni
+    label: "zamek_fin"
+    description: "Test finału zamku — cela więźnia, tunel, pająk, mur, ucieczka do lasu"
+    initial_flags:
+      straznik_state: straznik_oszukany
+    initial_inventory:
+      - "zardzewiały miecz"
+      - "miecz i zbroja"
+      - "mieszek ze złotem"
+      - "łom"
+      - "próbka substancji"
+      - "pochodnia"
+      - "klucz do celi"
+  - id: las2
+    label: "las_ivan"
+    description: "Test krainy Ivana — kobold, centaur, dziad, driada, zagadka kolorów"
+    initial_inventory:
+      - "zardzewiały miecz"
+      - "miecz i zbroja"
+      - "mieszek ze złotem"
+      - "próbka substancji"
+  - id: zamek
+    label: "zamek_brama"
+    description: "Test bramy zamku — miecz w ręku (złoto zużyte na trollu), strażnik na dziedzińcu wciąż aktywny"
+    initial_inventory:
+      - "zardzewiały miecz"
+  - id: pustynia
+    label: "pustynia"
+    description: "Test rozdziału pustyni — burzowe piaski, sekwencja N/S/N/W/E"
+    initial_inventory:
+      - "zardzewiały miecz"
+      - "miecz i zbroja"
+      - "mieszek ze złotem"
 
 intro_dziedziniec_zamku: |
   Stoisz na dziedzińcu zamku Królowej. Strażnik już nie blokuje drogi — udało ci się
   go przechytrzyć. Teraz czas zbadać zamek i znaleźć drogę do sali tronowej.
+  Co robisz?
+
+intro_cela_korytarz_wschodni: |
+  Masz przy sobie wszystko czego potrzebujesz: miecz, zbroję, mieszek złota, łom,
+  próbkę substancji z magazynu i pochodnię. Klucz do celi więźnia też już masz.
+  Korytarz ciągnie się na zachód, w stronę ostatniej celi.
+  Co robisz?
+
+intro_las2: |
+  Masz przy sobie miecz, zbroję, mieszek złota i próbkę substancji. Musisz
+  odnaleźć czarownika Ivana — mieszka gdzieś w głębi lasu, ale nikt nie wie
+  dokładnie gdzie. Ścieżka na północ prowadzi w głąb puszczy.
+  Co robisz?
+
+intro_zamek: |
+  Masz przy sobie tylko zardzewiały miecz — złotą monetę wydałeś już na trollu
+  przy moście. Stoisz przed potężną, magicznie zamkniętą bramą zamku. Na dziedzińcu
+  za nią wciąż czeka strażnik, którego jeszcze nie przechytrzyłeś.
+  Co robisz?
+
+intro_pustynia: |
+  Masz przy sobie miecz, zbroję i mieszek złota. Lądujesz z uderzeniem w gorący
+  piasek — bezkresna pustynia rozciąga się we wszystkich kierunkach. Gdzieś tu
+  ukrywa się Czarodziejka, której szukasz.
   Co robisz?
 
 intro_pokoj_karczmy: |
@@ -35,8 +92,38 @@ intro: |
 mechanics:
   city_arrest:
     track_flags: [pytanie_karczma, pytanie_ratusz, pytanie_targowisko, pytanie_brama]
-    threshold: 3
+    threshold_full: 4
+    threshold_partial: 3
+    min_transitions: 10
     sets_flag: siepaczy_nadchodzą
+  dziad_zagadki:
+    track_flags: [zagadka_cien, zagadka_echo, zagadka_rzeka, zagadka_sowa, zagadka_grzyb, zagadka_ksiezyc]
+    threshold: 6
+    sets_flag: dziad_przepuscil
+    hints:
+      zagadka_cien: {opis: "tej co chodzi krok w krok i znika o zachodzie słońca", odpowiedz: "cień"}
+      zagadka_echo: {opis: "tej o powtarzaniu słów w wąwozach i jaskiniach", odpowiedz: "echo"}
+      zagadka_rzeka: {opis: "tej o płynięciu bez nóg zawsze w dół", odpowiedz: "rzeka"}
+      zagadka_sowa: {opis: "tej o spaniu w dzień i polowaniu w nocy", odpowiedz: "sowa"}
+      zagadka_grzyb: {opis: "tej o rośnięciu po deszczu bez nasion i kwiatów", odpowiedz: "grzyb"}
+      zagadka_ksiezyc: {opis: "tej o zmienianiu twarzy co noc i świeceniu cudzym światłem", odpowiedz: "księżyc"}
+  historie_lasu:
+    track_items: ["historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+    labels:
+      "historia centaura": "centaura"
+      "historia driady": "driady"
+      "historia kobolda": "kobolda"
+      "historia dziada": "staruszka z mostu"
+
+# Przedmioty w ekwipunku, które gracz FAKTYCZNIE ma (liczą się do wszystkich warunków
+# requires/inventory_all itd.), ale nie są pokazywane na ekranie dopóki warunek nie jest
+# spełniony — np. "historia X" pojawia się w logice gry od razu po usłyszeniu opowieści,
+# ale wizualnie ujawnia się dopiero gdy gracz ma księgę run (ona "zapisuje" to co już wie).
+hidden_items:
+  "historia centaura": {inventory: "księga run"}
+  "historia driady": {inventory: "księga run"}
+  "historia kobolda": {inventory: "księga run"}
+  "historia dziada": {inventory: "księga run"}
 
 events:
   - id: zasadzka_miejska
@@ -49,6 +136,79 @@ events:
       Twój ekwipunek ląduje w worku. Wrzucają cię na wóz i ruszają w stronę lasu.
     target_location: transport_wiezniarski
     inventory_clear: true
+  - id: ivan_gotowy
+    condition:
+      inventory_all: ["próbka substancji", "historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+      flags_any_false: {ivan_wskazal_droge: true}
+    trigger_locations: [wnetrze_chatki_ivana]
+    narrative: |
+      Ivan mruży oczy, patrząc na ciebie uważnie. "Masz już próbkę. I widzę
+      w twoich oczach, że poznałeś ich wszystkich — centaura, driadę,
+      kobolda, staruszka z mostu." Bierze próbkę, wącha ją, a potem sięga
+      po księgę run i chowa oboje do szuflady. "To gorsze niż myślałem. Sam
+      tego nie rozwiążę — potrzebuję pomocy Czarodziejki, której imienia
+      nikt nie zna. Ukrywa się na pustyni, daleko stąd, odkąd uciekła przed
+      Królową." Podchodzi do okna i wskazuje na północ. "Idź na magiczną
+      polanę i wypowiedz tam zaklęcie: Rub dub gub. Zaniesie cię do niej.
+      A jeśli masz jeszcze chwilę — driada Arianna i centaur Chiron też
+      coś wiedzą o czarodziejce. Warto ich jeszcze zapytać, zanim odejdziesz."
+    flags: {ivan_wskazal_droge: true}
+    inventory_remove: ["próbka substancji", "księga run", "historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+  - id: ivan_niepelny
+    condition:
+      inventory: "próbka substancji"
+      inventory_any_missing: ["historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+      flags_any_false: {ivan_wskazal_droge: true}
+    trigger_locations: [wnetrze_chatki_ivana]
+    narrative: |
+      Ivan zerka na próbkę w Twojej dłoni, ale nie sięga po nią. "Jeszcze
+      nie teraz. Wyczuwam, że nie poznałeś jeszcze wszystkich historii
+      mieszkańców tego lasu — a beze mnie i tak nic nie zrozumiesz, dopóki
+      nie zrozumiesz ich."
+    list_story_progress: historie_lasu
+  - id: medrzec_nagroda
+    condition:
+      flag: drzewo_uratowane
+      value: true
+      inventory_missing: "pergamin z instrukcją"
+    trigger_locations: [oaza_beduinow]
+    narrative: |
+      Mędrzec podnosi wzrok, gdy się zbliżasz — i tym razem się uśmiecha.
+      "Drzewo znów żyje. Czuję to w powietrzu, w piasku, w wodzie sadzawki
+      — wszystko tu jest ze sobą splecione, młodzieńcze." Sięga do zwoju
+      i podaje ci stary pergamin. "Trzymaj, na co zasłużyłeś. Burza
+      piaskowa słucha tylko jednej drogi: północ, południe, północ,
+      zachód, wschód. Ani kroku inaczej — czas na pustyni nie wybacza
+      pomyłek."
+    inventory_add: ["pergamin z instrukcją"]
+  - id: kowal_naostrzy
+    condition:
+      inventory_all: ["zardzewiały miecz", "magiczna ostrzałka"]
+      flags_any_false: {miecz_naostrzony: true}
+    trigger_locations: [kowal]
+    narrative: |
+      Kowal bierze miecz, ogląda go pod światło, marszczy brwi.
+      "Zardzewiały? Chyba żartujesz." Przykłada magiczną ostrzałkę
+      do ostrza — iskry sypią się inaczej niż powinny, niebieskawo.
+      Oczy kowala robią się wielkie. "To nie jest zwykłe żelazo...
+      Ten miecz jest magiczny. Ktoś to dawno temu ukrył pod rdzą,
+      specjalnie." Oddaje naostrzony, lśniący miecz. "Teraz jest
+      gotowy na to, co przed tobą."
+    flags: {miecz_naostrzony: true}
+    inventory_remove: ["magiczna ostrzałka", "zardzewiały miecz"]
+    inventory_add: ["magiczny miecz"]
+  - id: kowal_brak_ostrzalki
+    condition:
+      inventory: "zardzewiały miecz"
+      inventory_missing: "magiczna ostrzałka"
+      flags_any_false: {wie_o_ostrzalce: true}
+    trigger_locations: [kowal]
+    narrative: |
+      Kowal bierze miecz do ręki, ogląda go, kręci głową.
+      "Zwykłym kamieniem tego nie naostrzę — ten miecz potrzebuje
+      magicznej ostrzałki. Znajdziesz taką w starych ruinach fortu,
+      o ile jeszcze tam jest." Oddaje ci miecz z powrotem.
+    flags: {wie_o_ostrzalce: true}
 
 locations:
   las:
@@ -152,11 +312,11 @@ locations:
           Wąska leśna ścieżka wije się między starymi dębami.
           Niedźwiedź zniknął w gęstwinie. Na ziemi, tam gdzie stał, leży
           żelazny pręt — pewnie wypadł z jakiegoś wozu.
-          Na południu widać skrót przez las prowadzący do znajomych okolic.
+          Na południu, między drzewami, widać niewielką słoneczną łąkę.
     exits:
       zachód: polana
       południe:
-        target: las
+        target: laka_ziolowa
         requires: {flag: niedzwiedz_state, values: [niedzwiedz_pokonany, niedzwiedz_odszedl]}
         hidden: true
     items:
@@ -202,6 +362,10 @@ locations:
               i odchodzi w głąb lasu ciężkim krokiem. Na ziemi, tam gdzie stał,
               dostrzegasz żelazny pręt.
             flags: {niedzwiedz_state: niedzwiedz_odszedl}
+        no_match_messages:
+          - "Niedźwiedź nie reaguje tak jak się spodziewałeś — dalej stoi na ścieżce, obserwując cię małymi, czarnymi oczami. Musisz spróbować czegoś innego."
+          - "Cokolwiek właśnie zrobiłeś, niedźwiedzia to nie rusza. Stoi dalej na środku ścieżki, sapiąc głośno przez nozdrza."
+          - "Niedźwiedź pozostaje niewzruszony. Ścieżka na południe wciąż jest zablokowana przez ogromne zwierzę."
         creative_solutions_hint: |
           Niedźwiedź to zwierzę — nie rozmawia, nie reaguje na słowa ani pokazywane przedmioty.
           Możliwe rozwiązania:
@@ -268,8 +432,9 @@ locations:
             flags: {troll_state: "troll_pokonany"}
           - id: przekupstwo
             requires: {inventory: "złota moneta"}
-            action_hint: "gracz musi wyraźnie zaoferować lub wręczyć złoto/sakiewkę trollowi — samo posiadanie złota nie wystarczy"
-            trigger: "gracz daje złoto lub sakiewkę trollowi"
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie zaoferować, wręczyć lub zaproponować (nawet pytająco) złoto/sakiewkę trollowi — samo posiadanie złota nie wystarczy"
+            trigger: "gracz daje, oferuje lub proponuje (nawet pytająco) złoto lub sakiewkę trollowi"
             outcome: |
               Troll widzi złoto i jego oczy robią się wielkie. "Złoooto! Daj, daj!"
               Wyrywa sakiewkę z twoich rąk i odchodzi pod most, przeliczając monety.
@@ -284,6 +449,10 @@ locations:
               przeciąga się i zapada w głęboki kamienny sen pod mostem.
               Przekradasz się cicho po moście. Droga wolna.
             flags: {troll_state: "troll_spany"}
+        no_match_messages:
+          - "Troll patrzy na ciebie tępo i drapie się po głowie. \"Nie rozumiem\" — mamrocze, dalej siedząc na moście i blokując przejście."
+          - "Troll ignoruje twoją próbę, ziewa szeroko i nie rusza się z miejsca. Most nadal jest zablokowany."
+          - "Cokolwiek powiedziałeś czy zrobiłeś, trolla to nie przekonuje. Nadal siedzi na środku mostu, mrucząc coś pod nosem."
         creative_solutions_hint: |
           Troll to klasyczny fantastyczny archetyp. Trolle śpią w nocy, boją się
           ognia, są głupie i można je przechytrzyć. Możliwe niekanoniczne rozwiązania
@@ -338,6 +507,7 @@ locations:
         state: "zamknięta"
         scripted_solutions:
           - id: haslo
+            exact_sequence: ["bum", "bara", "dum"]
             trigger: "gracz WYPOWIADA SŁOWNIE dokładnie hasło 'Bum bara dum' stojąc przed bramą"
             outcome: |
               Fioletowy symbol gaśnie. Przez chwilę panuje cisza, po czym brama
@@ -421,23 +591,42 @@ locations:
       - file: "domek_pustelnika"
         condition: null
         label: "Przed chatką (domyślna)"
-        prompt_extra: "mała drewniana chatka w lesie, dach pokryty mchem, rzędy ziół w glinianych donicach przy wejściu, ciepłe światło z okna, uchylone drzwi"
+        prompt_extra: "mała drewniana chatka w lesie, dach pokryty mchem, puste zeschnięte gliniane donice przy wejściu, ciepłe światło z okna, uchylone drzwi"
     description: |
       Ukryta ścieżka prowadzi cię przez gęsty las do małej, drewnianej chatki.
-      Dach pokryty jest mchem, a przy wejściu rosną rzędy ziół w glinianych donicach —
-      dziurawiec, krwawnik i inne, których nie rozpoznajesz.
+      Dach pokryty jest mchem, a przy wejściu stoją puste, zeschnięte gliniane donice —
+      kiedyś rosły w nich zioła, dziś zostały z nich tylko uschnięte łodygi.
       Drzwi chatki są uchylone. Z środka dobiega ciepłe światło i zapach dymu.
     exits:
       wschód: las
       wejście: wnetrze_hatki
+    items: []
+    npcs: []
+    atmosphere: "spokojny, ciepły, zapach dymu z kominka — kontrast z mrocznym lasem"
+
+  laka_ziolowa:
+    name: "Łąka Ziołowa"
+    image_variants:
+      - file: "laka_ziolowa"
+        condition: null
+        label: "Łąka ziołowa (domyślna)"
+        prompt_extra: "słoneczna leśna łąka pełna dzikich ziół i kwiatów, dziurawiec i krwawnik rosnące kępami, wysoka trawa, motyle, spokojna polana w głębi lasu"
+    description: |
+      Ścieżka za miejscem, gdzie jeszcze niedawno stał niedźwiedź, wyprowadza cię
+      na małą, słoneczną łąkę. Pełno tu dzikich ziół — rozpoznajesz dziurawiec
+      i krwawnik rosnące gęstymi kępami między wysoką trawą. Miejsce sprawia
+      wrażenie rzadko odwiedzanego. Na północy ścieżka wraca do miejsca, gdzie
+      wcześniej blokował ją niedźwiedź.
+    exits:
+      północ: sciezka_lesna
     items:
       - id: zioła
         name: "zioła lecznicze"
-        hint: "rzędy ziół rosnących w glinianych donicach przy wejściu"
-        description: "Pęczek świeżych ziół — dziurawiec, krwawnik i coś czego nie rozpoznajesz. Rosną przy chatce pustelnika."
+        hint: "kępy dzikich ziół rosnących na łące"
+        description: "Pęczek świeżych ziół — dziurawiec, krwawnik i coś czego nie rozpoznajesz. Rosną dziko na leśnej łące."
         takeable: true
     npcs: []
-    atmosphere: "spokojny, ciepły, zapach ziół i dymu z kominka — kontrast z mrocznym lasem"
+    atmosphere: "słoneczny, spokojny, brzęczenie owadów — ukryta łąka w głębi lasu"
 
   wnetrze_hatki:
     name: "Wnętrze Chatki Pustelnika"
@@ -471,7 +660,9 @@ locations:
           Zna sekret okolicy — w tym hasło do bramy zamku, ale NIGDY go nie wypowiada
           dopóki gracz nie przyniesie ziół. Nie podpowiada, nie sugeruje, nie wymawia hasła
           ani jego części. Mówi tylko że zna pewien sekret i że ma swoją cenę.
-          Jest życzliwy ale nie daje nic za darmo — cierpi na reumatyzm i jego zapasy ziół się skończyły.
+          Jest życzliwy ale nie daje nic za darmo — cierpi na reumatyzm, a zioła które
+          kiedyś hodował przy chatce dawno uschły. Sam nie ma już sił ani odwagi
+          wyprawiać się w głąb lasu po nowe.
           Jeśli pustelnik_state = "pomoglismy" — hasło zostało już zdradzone w OUTCOME skryptu.
           Pustelnik może je POWTÓRZYĆ tylko gdy gracz zapyta po raz kolejny: "Bum bara dum".
         state: "czeka_na_pomoc"
@@ -487,21 +678,25 @@ locations:
               Pamiętaj — królowa tego nie zmienia, bo je zapomina co tydzień.'
               Pustelnik chichocze pod wąsem.
             result: "haslo_zdradzone"
+            inventory_remove: ["zioła lecznicze"]
             flags: {"haslo_znane": true, "pustelnik_state": "pomoglismy"}
           - id: bez_ziol
             requires: {inventory_missing: "zioła lecznicze"}
             trigger: "gracz pyta o hasło bez przyniesienia ziół"
             outcome: |
               Pustelnik kręci głową. 'Informacje mają swoją cenę, przyjacielu.
-              Moje stawy bolą i skończyły mi się zioła. Przed chatką rosną — dziurawiec i krwawnik.
-              Przyniesiesz mi pęczek, to pogadamy.'
+              Moje stawy bolą, a zioła które hodowałem przy chatce dawno uschły.
+              Podobno w głębi lasu, tam gdzie grasuje niedźwiedź, jest łąka gdzie
+              wciąż rosną dziko — dziurawiec, krwawnik. Sam już nie mam sił ani
+              odwagi tam się wyprawiać. Przyniesiesz mi pęczek, to pogadamy.'
             result: "brak_zmiany"
         creative_solutions_hint: |
           Pustelnik jest uczciwy i życzliwy — nie jest wrogiem. Można go przekonać
           innymi sposobami jeśli gracz jest kreatywny: np. zaproponować złoto zamiast ziół
           (pustelnik powie że nie potrzebuje pieniędzy, tylko lekarstwa), albo bardzo
           ciekawie opowiedzieć swoją historię (pustelnik jest ciekawski — może się skusić).
-          Zioła rosną tuż przed chatką — gracz musi tam wyjść i je zebrać.
+          Zioła rosną dziko na łące w głębi lasu, za miejscem gdzie wcześniej
+          niedźwiedź blokował ścieżkę — gracz musi tam dotrzeć i je zebrać.
     atmosphere: "przytulny, ciepły, zapach ziół i starego drewna — miejsce pełne mądrości"
     
   dziedziniec_zamku:
@@ -527,6 +722,7 @@ locations:
     exits:
       południe:
         target: zamek
+        requires: {flag: brama_powrotna_niemozliwa, value: true}
         blocked_message: "Brama zatrzasnęła się za tobą z głuchym łoskotem. Nie ma powrotu."
       północ:
         target: korytarz_polnocny
@@ -652,7 +848,7 @@ locations:
       Posadzka wygląda normalnie, ale coś jest z nią nie tak — rysy tworzą podejrzany wzór.
       Na końcu korytarza masywne drzwi do składziku.
     exits:
-      zachód: magazyn_ciemny
+      południe: magazyn_ciemny
       północ:
         target: magazyn_glowny
         requires: {flag: zapadnia_mag_zauwazona, value: true}
@@ -669,6 +865,7 @@ locations:
         takeable: false
         examine_sets_flag: {zapadnia_mag_zauwazona: true}
         set_on: examine
+        is_trap: true
     npcs: []
     atmosphere: "chłodny kamień, blask pochodni, zapach kurzu i starego drewna"
 
@@ -704,7 +901,7 @@ locations:
     atmosphere: "wilgoć, ciemność, zapach stęchlizny i zimnego kamienia — cisza przerywana kapaniem wody"
 
   kanaly:
-    name: "Tunel ucieczki"
+    name: "Podziemne Kanały"
     image_variants:
       - file: "kanaly_podziemne"
         condition: null
@@ -755,9 +952,26 @@ locations:
       Na ścianie drewniane schody prowadzą na górę.
     exits:
       wyjście: dziedziniec_zamku
-      góra: wiezba
+      góra:
+        target: wiezba
+        requires: {inventory_all: ["miecz i zbroja"]}
+        blocked_message: "Strażnicy zagradzają Ci drogę na górę. \"Bez pełnej zbroi nie wejdziesz. Wyglądasz jak żebrak, nie żołnierz.\""
     items: []
-    npcs: []
+    npcs:
+      - id: straznicy_wiezy
+        name: "Strażnicy Wieży"
+        description: |
+          Dwaj leniwi strażnicy przy stole, pochłonięci grą w kości. Kompletnie znudzeni
+          służbą, ledwo podnoszą wzrok na przechodzących. Ale gdy ktoś rusza w stronę
+          schodów na górę, natychmiast tężeją i sprawdzają czy wygląda jak żołnierz —
+          bez pełnej zbroi i broni nikogo tam nie puszczą, taki mają rozkaz.
+        state: "przy_grze"
+        creative_solutions_hint: |
+          Strażnicy przepuszczą na górę TYLKO kogoś kto ma pełną zbroję i broń w ekwipunku
+          (to sprawdzane jest mechanicznie przy wejściu na schody, nie przez rozmowę).
+          Rozmowa, przekupstwo czy zastraszanie bez ekwipunku ich nie przekona — są tchórzliwi
+          ale mają twardy rozkaz i boją się kary bardziej niż gracza. Sama pogawędka o kościach,
+          jedzeniu czy nudnej służbie jest jak najbardziej możliwa i nie zmienia niczego mechanicznie.
     atmosphere: "zapach potu i resztek jedzenia, stukot kości do gry, nuda"
 
   wiezba:
@@ -822,14 +1036,14 @@ locations:
       - condition: {inventory: "pochodnia"}
         description: |
           W świetle pochodni kamienny korytarz nabiera kształtów. Zakurzone mury,
-          pajęczyny, w głębi drzwi do magazynów. Droga na zachód jest teraz przejezdna.
+          pajęczyny, w głębi drzwi do magazynów. Droga na północ jest teraz przejezdna.
       - condition: null
         description: |
           Korytarz na zachód od dziedzińca. Kompletna ciemność — bez źródła światła
           nie ruszysz się stąd dalej.
     exits:
       wschód: dziedziniec_zamku
-      zachód:
+      północ:
         target: korytarz
         requires: {inventory: "pochodnia"}
         blocked_message: "Zbyt ciemno żeby iść dalej. Potrzebujesz źródła światła."
@@ -916,13 +1130,119 @@ locations:
         prompt_extra: "mroczny korytarz zamkowego więzienia, po bokach zakratowane puste cele, na końcu jedna cela z zamkniętymi drzwiami, kamienna posadzka, wilgoć"
     description: |
       Mroczny korytarz z celami po obu stronach — większość pusta, drzwi otwarte.
-      Na końcu jedna cela zamknięta na klucz. Za kratami widać postać.
+      Jedna z pustych cel na południu, korytarz ciągnie się dalej na wschód.
+      W głębi na północy jedna cela zamknięta na klucz. Za kratami widać postać.
     exits:
       zachód: dziedziniec_zamku
       północ: cela_przy_kratach
+      południe: cela_pusta_1
+      wschód: cela_korytarz_wschodni
     items: []
     npcs: []
     atmosphere: "wilgoć, zimno, kapanie wody, cisza przerywana odległym echem"
+
+  cela_korytarz_wschodni:
+    name: "Korytarz Wschodni — Dalsza Część"
+    image_variants:
+      - file: "cela_korytarz_wschodni"
+        base: true
+        condition: null
+        label: "Dalsza część korytarza"
+        prompt_extra: "mroczny korytarz zamkowego więzienia, kontynuacja korytarza z celami, po bokach zakratowane puste cele, kamienna posadzka, wilgoć, słabe światło pochodni"
+    description: |
+      Korytarz ciągnie się dalej. Kolejne dwie cele — jedna na północy, jedna na południu.
+      Cisza, tylko kapanie wody gdzieś w głębi.
+    exits:
+      zachód: cela_korytarz
+      północ: cela_pusta_2
+      południe: cela_worek
+    items: []
+    npcs: []
+    atmosphere: "wilgoć, zimno, kapanie wody, cisza przerywana odległym echem"
+
+  cela_pusta_1:
+    name: "Pusta Cela"
+    image_variants:
+      - file: "cela_pusta_1"
+        base: true
+        condition: null
+        label: "Pusta cela — rozwalająca się szafka"
+        prompt_extra: "wnętrze pustej celi więziennej w zamku, w rogu rozwalająca się drewniana szafka, słoma na podłodze, wilgotne kamienne ściany, mrok"
+    description: |
+      Pusta cela. W rogu stoi rozwalająca się drewniana szafka, jedna noga podparta kamieniem.
+      Poza tym nic — słoma na podłodze i cisza.
+    exits:
+      północ: cela_korytarz
+    items:
+      - id: szafka_pusta
+        name: "rozwalająca się szafka"
+        hint: "rozwalająca się szafka w rogu celi"
+        description: "Otwierasz skrzypiące drzwiczki. W środku pustka — ktoś dawno już to opróżnił. Nic tu nie ma."
+        takeable: false
+    npcs: []
+    atmosphere: "stęchlizna, wilgoć, cisza"
+
+  cela_pusta_2:
+    name: "Pusta Cela"
+    image_variants:
+      - file: "cela_pusta_2"
+        base: true
+        condition: null
+        label: "Pusta cela — przegniłe łóżko"
+        prompt_extra: "wnętrze pustej celi więziennej w zamku, przegniłe drewniane łóżko z resztkami słomy, wilgotne kamienne ściany, mrok, pajęczyny"
+    description: |
+      Pusta cela. Pod ścianą przegniłe drewniane łóżko, resztki słomy rozsypane na podłodze.
+      Nic więcej — tylko zapach wilgoci i stęchlizny.
+    exits:
+      południe: cela_korytarz_wschodni
+    items:
+      - id: lozko_przegniłe
+        name: "przegniłe łóżko"
+        hint: "przegniłe łóżko pod ścianą"
+        description: "Sprawdzasz posłanie i szczeliny w drewnie. Nic — tylko wilgoć i zgnilizna. Ktokolwiek tu siedział, nic po sobie nie zostawił."
+        takeable: false
+    npcs: []
+    atmosphere: "stęchlizna, wilgoć, cisza"
+
+  cela_worek:
+    name: "Pusta Cela — Worek w Kącie"
+    image_variants:
+      - file: "cela_worek"
+        condition: {inventory_contains: "miecz i zbroja"}
+        label: "Cela — worek opróżniony"
+        prompt_extra: "wnętrze pustej celi więziennej w zamku, pusty otwarty worek leżący na podłodze, słoma, wilgotne kamienne ściany, mrok"
+      - file: "cela_worek_pelny"
+        base: true
+        condition: null
+        label: "Cela — worek w kącie (domyślna)"
+        prompt_extra: "wnętrze pustej celi więziennej w zamku, w kącie wypchany płócienny worek związany sznurkiem, słoma na podłodze, wilgotne kamienne ściany, mrok"
+    description: |
+      Pusta cela — a właściwie prawie pusta. W kącie leży wypchany płócienny worek,
+      związany sznurkiem, jakby ktoś go tu w pośpiechu wrzucił i zapomniał zabrać.
+    exits:
+      północ: cela_korytarz_wschodni
+    items:
+      - id: worek
+        name: "płócienny worek"
+        hint: "wypchany worek w kącie celi"
+        description: "Rozwiązujesz sznurek. W środku twój miecz, zbroja i mieszek ze złotem — to wszystko co zabrali ci przy aresztowaniu. Ktoś musiał się spieszyć i po prostu to tu wrzucił."
+        takeable: false
+        examine_sets_flag: {worek_otwarty: true}
+        set_on: examine
+      - id: miecz_i_zbroja_odzyskane
+        name: "miecz i zbroja"
+        hint: "twoja broń i zbroja w worku"
+        description: "Twój stary komplet uzbrojenia — całe i nietknięte."
+        takeable: true
+        hidden_when: {flag: worek_otwarty, value: null}
+      - id: mieszek_odzyskany
+        name: "mieszek ze złotem"
+        hint: "mieszek na dnie worka"
+        description: "Twoje oszczędności — nikt ich nie ruszył."
+        takeable: true
+        hidden_when: {flag: worek_otwarty, value: null}
+    npcs: []
+    atmosphere: "stęchlizna, wilgoć, cisza, słabe światło z korytarza"
 
   cela_przy_kratach:
     name: "Przed Celą Więźnia"
@@ -939,8 +1259,8 @@ locations:
       południe: cela_korytarz
       wejście:
         target: cela_zamknieta
-        requires: {inventory: "klucz do celi"}
-        blocked_message: "Drzwi celi zamknięte na ciężką kłódkę. Potrzebujesz klucza."
+        requires: {flag: cela_zamknieta_stan, value: otwarta}
+        blocked_message: "Drzwi celi zamknięte na ciężką kłódkę. Musisz wyraźnie użyć klucza, żeby je otworzyć."
     items: []
     npcs:
       - id: agent
@@ -953,11 +1273,12 @@ locations:
         scripted_solutions:
           - id: otworz_cele
             requires: {inventory: "klucz do celi"}
-            trigger: "gracz otwiera celę, wkłada klucz, otwiera drzwi, wchodzi do celi"
+            action_hint: "gracz musi wyraźnie wskazać użycie klucza do celi — samo 'wejdź/otwórz' bez wskazania kluczem nie wystarczy"
+            trigger: "gracz otwiera celę kluczem, wkłada klucz do zamka, przekręca klucz w celi"
             outcome: |
               Wkładasz klucz do kłódki i przekręcasz — mechanizm ustępuje z głośnym
               szczękiem. Drzwi celi otwierają się na oścież.
-            flags: {}
+            flags: {cela_zamknieta_stan: otwarta}
             move_to: cela_zamknieta
           - id: rozmowa_przez_kraty
             allow_talk: true
@@ -978,23 +1299,32 @@ locations:
   cela_zamknieta:
     name: "Otwarta Cela"
     image_variants:
+      - file: "cela_przejscie"
+        condition: {flag: przejscie_odkryte, value: true}
+        label: "Cela — przejście w ścianie odsłonięte"
+        prompt_extra: "ciemna wilgotna cela więzienna w zamku, w zachodniej ścianie widoczna wąska odsłonięta szczelina między wyrwanymi cegłami, mężczyzna w łachmanach wskazuje na przejście, słabe światło z góry"
       - file: "cela_otwarta"
         base: true
         condition: null
         label: "Cela — otwarta, więzień w środku"
         prompt_extra: "ciemna wilgotna cela więzienna w zamku, otwarte masywne drzwi z kratami, mężczyzna w łachmanach stoi przy zachodniej ścianie z luźnymi cegłami, widać jego twarz z nadzieją, słabe światło z góry, gotowy do działania"
     description: |
-      Wchodzisz do celi. Więzień natychmiast staje — jest gotowy do działania.
-      Zachodnia ściana wygląda podejrzanie, cegły są luźniejsze niż reszta.
+      Wchodzisz do celi. Więzień natychmiast wstaje, gotowy do działania.
+      "Masz próbkę?" — pyta bez zbędnych słów.
     exits:
       wyjście: cela_przy_kratach
+      zachód:
+        target: tunel_wykop
+        requires: {flag: przejscie_odkryte, value: true}
+        hidden: true
+        blocked_message: "Nie widzisz żadnego przejścia w ścianie."
     items: []
     npcs:
       - id: agent_wolny
         name: "Więzień"
         description: |
           Teraz jesteś w celi razem z nim. Możesz mu dać przedmioty i działać razem.
-          Czeka na próbkę substancji z zachodniego magazynu i łom do przebicia ściany.
+          Czeka na próbkę substancji z zachodniego magazynu, żeby pokazać ukryte przejście.
         state: "uwieziony"
         scripted_solutions:
           - id: bez_probki
@@ -1006,40 +1336,161 @@ locations:
               Wskazuje na zachodnią ścianę. "Ta ściana da się przebić. Ale potrzebuję
               tej substancji. Idź do zachodniego magazynu."
             flags: {}
-          - id: podkop_start
+          - id: daje_probke
             requires: {inventory: "próbka substancji"}
             allow_talk: true
-            trigger: "gracz podaje próbkę i łom, proponuje kopanie lub ucieczkę"
+            action_hint: "gracz musi wyraźnie dać, wręczyć lub podać próbkę substancji więźniowi — samo posiadanie jej w ekwipunku nie wystarczy"
+            trigger: "gracz daje, wręcza lub podaje próbkę substancji więźniowi"
             outcome: |
-              Więzień widzi próbkę — oczy błyskają. "W końcu." Chowa ją za pazuchę,
-              chwyta łom i uderza w ścianę. Cegły osuwają się jedna po drugiej.
-              Wąski czarny otwór — tunel. "Ty pierwszy" — wskazuje bez słowa.
-            flags: {tunel_wydrązony: true}
-            inventory_remove: ["łom"]
-            move_to: tunel_ucieczki
+              Więzień widzi próbkę — oczy błyskają. "W końcu." Chowa ją za pazuchę
+              i podchodzi do zachodniej ściany. Naciska kilka luźnych cegieł —
+              te ustępują, odsłaniając wejście do starego, zapomnianego tunelu.
+              "Zobacz, tu jest wejście. Idź przodem, ja zaraz za tobą."
+            flags: {przejscie_odkryte: true}
+        no_match_messages:
+          - "Więzień kręci głową. \"Mówiłem — najpierw próbka substancji. Bez niej nic nie zrobię.\""
+          - "Więzień nie rusza się z miejsca. \"Bez próbki nie ma o czym gadać.\""
+          - "Więzień tylko czeka, założywszy ręce. \"Próbka. Reszta poczeka.\""
         creative_solutions_hint: |
           Teraz gracz jest w celi z więźniem — może podawać przedmioty.
-          Próbka substancji z zachodniego magazynu + łom = przebita ściana i tunel.
+          Próbka substancji z zachodniego magazynu odsłania ukryte przejście w ścianie.
           Bez próbki więzień nie ruszy się z miejsca, choćby miał wszystkie narzędzia świata.
+          Samo przebicie muru w przejściu to już osobna sprawa — potrzebny łom.
     atmosphere: "wilgoć, mężczyzna gotowy do działania, zachodnia ściana do przebicia"
+
+  tunel_wykop:
+    name: "Wejście do Tunelu"
+    image_variants:
+      - file: "tunel_wykop"
+        base: true
+        condition: null
+        label: "Wejście do tunelu"
+        prompt_extra: "ciasne wejście do ziemnego tunelu za wyrwanymi cegłami w murze zamkowym, mrok w głębi, wilgotne ściany, korzenie drzew przebijające się przez ziemię"
+    description: |
+      Przeciskasz się przez szczelinę w murze do ciasnego, ziemnego tunelu.
+      Więzień wchodzi tuż za tobą i łapie cię za ramię: "Tunel jest długi.
+      Czają się w nim różne rzeczy — uważaj, co robisz." Ciemność w głębi
+      nie wygląda zachęcająco.
+    exits:
+      wschód: cela_zamknieta
+      zachód: tunel_pajak
+    items: []
+    npcs: []
+    atmosphere: "ciasnota, wilgotna ziemia, więzień czujny tuż za plecami"
+
+  tunel_pajak:
+    name: "Gniazdo Pająka"
+    image_variants:
+      - file: "tunel_pajak_pokonany"
+        condition: {flag: pajak_state, values: [pajak_pokonany, pajak_odgoniony]}
+        label: "Tunel — droga wolna"
+        prompt_extra: "wąski ziemny tunel zamkowy, puste gniazdo pajęcze w kącie, pajęczyny na ścianach, w oddali dalsza droga"
+      - file: "tunel_pajak"
+        base: true
+        condition: null
+        label: "Tunel — pająk blokuje drogę"
+        prompt_extra: "wąski ziemny tunel zamkowy, ogromny kudłaty pająk blokujący dalszą drogę, grube pajęczyny na ścianach, mrok"
+    description: |
+      Tunel się zwęża. Grube pajęczyny oblepiają ściany, a w mroku przed wami
+      coś się rusza — ogromny, kudłaty pająk zagradza dalszą drogę, odnóża
+      stukają głucho o ścianę.
+    exits:
+      wschód: tunel_wykop
+      zachód:
+        target: tunel_ucieczki
+        requires: {flag: pajak_state, values: [pajak_pokonany, pajak_odgoniony]}
+        blocked_message: "Ogromny pająk blokuje wąskie przejście — musisz się z nim najpierw uporać."
+    items: []
+    npcs:
+      - id: pajak
+        name: "Olbrzymi Pająk"
+        description: |
+          Ogromny, kudłaty pająk wielkości psa, osiadły w załomie tunelu. To zwierzę —
+          nie rozumie słów i nigdy nie mówi. Komunikuje się WYŁĄCZNIE dźwiękami:
+          stukot odnóży, syczenie. Boi się ognia — aktywne pomachanie pochodnią je
+          odstraszy. Reaguje też na aktywne zagrożenie mieczem — wtedy ginie.
+          Bierne pokazywanie przedmiotów czy słowa nic nie dają — to zwierzę, nie rozumie.
+        state: "blokuje_tunel"
+        unavailable_states:
+          pajak_pokonany: "Pająk leży martwy w kącie tunelu."
+          pajak_odgoniony: "Po pająku nie ma już śladu — uciekł przed ogniem w głąb szczelin."
+        scripted_solutions:
+          - id: walka_mieczem
+            requires: {inventory: "zardzewiały miecz"}
+            action_hint: "gracz musi wyraźnie wskazać użycie miecza lub broni — samo 'atakuj/zabij/walnij' bez wskazania czym nie wystarczy"
+            trigger: "gracz aktywnie używa miecza wobec pająka — atakuje, dźga, tnie, zabija"
+            outcome: |
+              Wbijasz miecz w cielsko pająka. Zwierzę wije się przez chwilę na
+              ziemi, po czym znieruchomiałe. Droga w głąb tunelu stoi otworem.
+            flags: {pajak_state: pajak_pokonany}
+          - id: odgonienie_pochodnia
+            requires: {inventory: "pochodnia"}
+            action_hint: "gracz musi wyraźnie wskazać użycie pochodni lub ognia wobec pająka — samo 'odgoń go' bez wskazania czym nie wystarczy"
+            trigger: "gracz macha pochodnią w stronę pająka, straszy go ogniem, odstrasza płomieniem"
+            outcome: |
+              Wyciągasz płonącą pochodnię w stronę pająka. Zwierzę cofa się gwałtownie
+              przed ogniem, po czym znika chyżo w szczelinie ściany. Droga w głąb
+              tunelu stoi otworem.
+            flags: {pajak_state: pajak_odgoniony}
+        no_match_messages:
+          - "Pająk nie reaguje tak jak się spodziewałeś — dalej blokuje przejście, stukając odnóżami o ścianę."
+          - "Cokolwiek właśnie zrobiłeś, pająka to nie rusza. Wciąż siedzi na drodze, sycząc cicho."
+          - "Pająk pozostaje na miejscu, obserwując cię wieloma czarnymi ślepiami."
+        creative_solutions_hint: |
+          Pająk to zwierzę — reaguje na aktywne użycie miecza (zabija) albo pochodni
+          (odstrasza ogniem, ucieka żywy). Bierne pokazywanie czegokolwiek czy słowa
+          nic nie dają.
+    atmosphere: "ciasnota, pajęczyny, syk i stukot odnóży w mroku"
 
   tunel_ucieczki:
     name: "Tunel Pod Murem"
     image_variants:
+      - file: "tunel_ucieczki_rozbity"
+        condition: {flag: mur_rozbity, value: true}
+        label: "Tunel — mur rozbity"
+        prompt_extra: "wąski ziemny tunel pod kamiennym murem zamkowym, w murze wyłom z gruzu i cegieł, przez dziurę wpada szare światło dnia i widać las na zewnątrz"
       - file: "tunel_ucieczki"
         base: true
         condition: null
-        label: "Tunel — wyjście na zewnątrz"
-        prompt_extra: "wąski ziemny tunel pod kamiennym murem zamkowym, wykopany ręcznie, mokre ściany z cegieł, w oddali szara jasność — wyjście na zewnątrz, gęsty las za murem"
+        label: "Tunel — zamurowane wyjście"
+        prompt_extra: "wąski ziemny tunel pod kamiennym murem zamkowym, na końcu gruby fragment zamurowanego wyjścia blokujący drogę, mokre ściany z cegieł, ciemność"
     description: |
-      Ciasny, ziemny tunel przebity przez fundamenty muru. Zapach mokrej gliny
-      i kamienia. Musisz się czołgać — ale na końcu widać szare światło dnia.
-      Więzień ciągnie za tobą, żadnego słowa.
+      Tunel kończy się grubym, zamurowanym fragmentem — ktoś dawno temu
+      zasypał to wyjście. Więzień łapie cię za ramię: "Ta substancja, którą
+      niesiesz — to nie zwykła maź. Zanieś ją do czarownika Ivana, mieszka
+      w głębi lasu za murami. Bardzo wiele od tego zależy." Zostaje jeszcze
+      przebić się przez ten mur.
     exits:
-      przód: las2
+      przód:
+        target: las2
+        requires: {flag: mur_rozbity, value: true}
+        blocked_message: "Zamurowane wyjście wciąż blokuje drogę — musisz je najpierw rozbić."
     items: []
-    npcs: []
-    atmosphere: "ciasnota, glina, nadzieja — wyjście blisko"
+    npcs:
+      - id: mur
+        name: "Zamurowane wyjście"
+        is_object: true
+        description: |
+          Gruby, zamurowany fragment przejścia. Nie da się go sforsować gołymi
+          rękami — trzeba czegoś ciężkiego. NIGDY nie opisuj że mur pęka lub
+          gracz przechodzi, jeśli trigger poniżej nie pasował — to element
+          otoczenia, nie postać.
+        state: "zamurowany"
+        scripted_solutions:
+          - id: rozbij_lomem
+            requires: {inventory: "łom"}
+            action_hint: "gracz musi wyraźnie wskazać użycie łomu — samo 'rozbij mur/idź dalej' bez wskazania łomem nie wystarczy"
+            trigger: "gracz aktywnie używa łomu na murze — rozbija, wali, uderza łomem w mur"
+            outcome: |
+              Bierzesz łom i z całej siły walisz w zamurowany fragment. Glina
+              i cegły sypią się pod ciosami, aż w końcu światło dnia przebija
+              się przez dziurę. Świeże powietrze wpada do tunelu.
+            flags: {mur_rozbity: true}
+        no_match_messages:
+          - "Mur nawet nie drgnął. Zamurowane wyjście wciąż blokuje drogę."
+          - "Cokolwiek właśnie zrobiłeś, mur pozostaje nienaruszony."
+          - "Gruby fragment muru stoi na miejscu — to nie wystarczyło, żeby go ruszyć."
+    atmosphere: "ciasnota, glina, świeższe powietrze przebijające się zza muru"
 
   # ===== POZIOM 2: LAS ZA ZAMKIEM =====
 
@@ -1054,13 +1505,1349 @@ locations:
     description: |
       Wychodzisz na wolne powietrze. Zwykły, liściasty las — brzozy i graby,
       zielone listowie przepuszcza majowe słońce. Ptaki śpiewają. Po twoich plecach
-      widać szare mury zamku, ale już za tobą. Więzień staje obok, oddycha głęboko.
-      "Dalej na wschód jest miasto" — mówi po chwili ciszy.
+      widać szare mury zamku, ale już za tobą. Więzień staje obok, oddycha głęboko,
+      po czym patrzy ci prosto w oczy: "Tu nasze drogi się rozdzielają. Pamiętaj —
+      musisz odnaleźć czarownika Ivana. Mieszka gdzieś w głębi lasu, ale nikt nie
+      wie dokładnie gdzie. Ja też zaniosę swoją próbkę tam, gdzie trzeba."
+      Odwraca się i znika między drzewami, nie oglądając się za siebie.
     exits:
-      wschód: miasto_las2
+      północ: las01
     items: []
     npcs: []
     atmosphere: "wolność, słońce przez liście, ptaki, cisza po tym co było"
+
+  las01:
+    name: "Głęboki Las — Rozdroże"
+    image_variants:
+      - file: "las01"
+        base: true
+        condition: null
+        label: "Rozdroże w głębokim lesie"
+        prompt_extra: "gęsty, głęboki las, stare dęby, na jednym z pni widoczne wyryte, tajemnicze runy, ścieżki rozchodzące się w kilku kierunkach, popołudniowe światło"
+    description: |
+      Las gęstnieje. Ścieżki rozchodzą się w kilku kierunkach. Na pniu jednego
+      z drzew widnieją wyryte, dziwne runy — ktoś je tu zostawił celowo.
+    exits:
+      południe: las2
+      zachód: chatka_kostki
+      wschód: driada
+      północ: kobold
+    items:
+      - id: runy1
+        name: "wyryte runy"
+        hint: "dziwne runy wyryte na pniu drzewa"
+        description: "Runy układają się w słowa: \"Czarny zawsze musi być pierwszy\"."
+        locked_description: "Widzisz dziwne, wyryte symbole, ale nie potrafisz ich rozszyfrować. Potrzebujesz czegoś, co pomoże Ci je odczytać."
+        unlock_requires: {inventory: "księga run"}
+        takeable: false
+    npcs: []
+    atmosphere: "gęsty las, cisza, gdzieniegdzie wyryte znaki na drzewach"
+
+  chatka_kostki:
+    name: "Zrujnowana Chatka"
+    image_variants:
+      - file: "chatka_kostki_puste"
+        condition: {inventory_contains: "kostki cukru"}
+        label: "Zrujnowana chatka (cukier zabrany)"
+        prompt_extra: "usuń miseczkę z kostkami cukru ze stołu, stół pusty, reszta sceny bez zmian"
+      - file: "chatka_kostki"
+        base: true
+        condition: null
+        label: "Zrujnowana chatka w lesie"
+        prompt_extra: "mała, zrujnowana drewniana chatka w lesie, zapadnięty dach, otwarte drzwi, na starym stole widać kilka kostek cukru w miseczce"
+    description: |
+      Stara, na wpół zawalona chatka. Dach zapadł się w jednym miejscu, drzwi
+      wiszą na jednym zawiasie. Na starym stole leży miseczka z kilkoma
+      kostkami cukru — ktoś musiał tu kiedyś mieszkać.
+    exits:
+      wschód: las01
+      północ: centaur
+    items:
+      - id: kostki_cukru
+        name: "kostki cukru"
+        hint: "kilka kostek cukru w miseczce na stole"
+        description: "Zwykłe kostki cukru, trochę stwardniałe od czasu. Zwierzęta chyba by się na nie skusiły."
+        takeable: true
+    npcs: []
+    atmosphere: "kurz, zapadnięty dach, cisza opuszczonego miejsca"
+
+  centaur:
+    name: "Drzewo Arianny"
+    image_variants:
+      - file: "driada_wolna"
+        condition: {flag: arianna_wolna, value: true}
+        label: "Arianna uwolniona z drzewa"
+        prompt_extra: "driada w pełnej postaci, wysunięta z pnia drzewa, smukła kobieca sylwetka z korzeniami zamiast stóp i włosami jak wiotkie gałązki, drzewo za nią z widocznym pękniętym miejscem gdzie wcześniej była zrośnięta, mistyczna leśna polana, zielone świecące oczy"
+      - file: "driada"
+        base: true
+        condition: null
+        label: "Driada w swoim drzewie"
+        prompt_extra: "ogromne, stare drzewo z twarzą wtopioną w korę, driada w postaci kobiety zrośniętej z pniem, zielone, świecące oczy, mistyczna leśna polana"
+    description: |
+      Ogromne, stare drzewo. W jego korze widać zarys twarzy — driada Arianna,
+      zrośnięta z pniem, otwiera oczy na dźwięk twoich kroków. "Wyczuwam, że
+      szukasz pomocy" — mówi cicho. "Mój przyjaciel, centaur Chiron, ukrywa
+      się w pobliskim gąszczu. Jest płochliwy, ale mi ufa. Jeśli go spotkasz,
+      powiedz że cię przysłałam. Jest tak strachliwy, że jeśli zechcesz mu coś
+      dać, czasem musisz powtórzyć to kilka razy, zanim się przełamie i podejdzie."
+      Milknie na chwilę, jakby nasłuchiwała czegoś, czego nie słyszysz. "Las
+      się starzeje szybciej niż kiedyś — czuję to w korzeniach. Drzewa
+      przemijają wolniej niż ludzie, ale i tak przemijają." Jej wzrok wraca
+      do ciebie, jakby przypominała sobie że tam jesteś. "Wybacz. Rzadko
+      mam z kim porozmawiać."
+    exits:
+      południe: chatka_kostki
+      wschód: kobold
+      zachód: las03
+    items: []
+    npcs:
+      - id: arianna
+        name: "Driada Arianna"
+        description: |
+          Driada zrośnięta ze starym drzewem — z własnej woli, nie z konieczności.
+          Mogłaby się uwolnić w każdej chwili, ale od dawna nie widzi po temu
+          potrzeby: zrosła się z pniem tak dawno, że to dla niej nie więzienie,
+          tylko dom. Mówi powoli — nie z ostrożności, tylko dlatego że dla niej
+          czas płynie inaczej: liczy pory roku, nie dni. Patrzy na świat z
+          cierpliwością kogoś, kto mógłby pójść dokądkolwiek, a mimo to wybiera
+          trwać w miejscu. Zna każde drzewo w lesie jak własne ciało — rozpozna
+          dąb po korze z zamkniętymi oczami, wie czym różni się wytrzymały buk
+          od kruchej brzozy czy giętkiego graba. Przyjaciółka centaura Chirona —
+          jedna z niewielu istot, które ośmielają się podejść blisko jej pnia.
+        state: "spokojna"
+        scripted_solutions:
+          - id: historia_arianny
+            allow_talk: true
+            action_hint: "to dopasowanie dla pytań o TOŻSAMOŚĆ/HISTORIĘ driady wprost ('opowiedz mi swoją historię', 'kim jesteś', 'jaka jest twoja historia') ORAZ dla pytań wprost o Królową (jej moc, rządy, wycinanie lasu) — ogólne pytania o las, drzewa, naturę, czas, samotność, filozofię (NIE o nią samą/jej historię) NIE pasują tutaj i powinny zostać bez dopasowania (Grok improwizuje swobodnie w jej głosie)"
+            trigger: "gracz pyta driadę kim jest / o jej historię i przeszłość, albo pyta wprost o Królową, jej moc i rządy, albo o przeszłość driady związaną z Królową i wycinaniem lasu"
+            outcome: |
+              Arianna wzdycha, liście nad nią szeleszczą. "Pamiętam ten las
+              zanim Królowa zaczęła go wycinać. Pamiętam też jak jej moc
+              rosła — czerpie ją z czegoś, co nie powinno tu być." Zamyka oczy.
+              "Idź do Ivana. On wie więcej niż ja."
+            flags: {}
+            inventory_add: ["historia driady"]
+          - id: o_chironie
+            allow_talk: true
+            trigger: "gracz dopytuje driadę o centaura Chirona, jego zwyczaje, upodobania, jak go znaleźć albo przekonać"
+            outcome: |
+              Arianna uśmiecha się lekko. "Chiron jest płochliwy, ale ma jedną
+              słabość — uwielbia słodycze. Jeśli go znajdziesz, wspomnij moje
+              imię i zaproponuj mu coś słodkiego. To powinno wystarczyć."
+            flags: {}
+          - id: o_czarodziejce
+            exact_sequence: [["czarodziejka", "czarodziejkę", "czarodziejki", "czarodziejce"], "imienia", "nikt", "nie", "zna"]
+            trigger: "gracz pyta driadę o Czarodziejkę, której imienia nikt nie zna"
+            outcome: |
+              Arianna milknie na dłuższą chwilę. "Czarodziejka... Ona od
+              początku nie ufała Królowej. Widziała czające się w niej zło,
+              zanim ktokolwiek inny zdążył cokolwiek zauważyć. Dlatego
+              uciekła, zanim było za późno."
+            flags: {}
+          - id: uwalnia_sie
+            allow_talk: true
+            action_hint: "gracz musi naprawdę przekonać driadę do uwolnienia się z drzewa — ciekawa rozmowa, szczery komplement, prawdziwe zainteresowanie nią samą albo wyraźna prośba by pokazała się w pełnej postaci; samo pytanie 'czy możesz wyjść z drzewa' bez żadnego przekonywania nie wystarczy"
+            trigger: "gracz przekonuje, prosi lub zachęca driadę żeby uwolniła się z drzewa i pokazała się w pełnej postaci"
+            outcome: |
+              Arianna uśmiecha się — po raz pierwszy widzisz to wyraźnie, bo kora
+              wokół jej twarzy zaczyna pękać i rozstępować się jak skorupa. Powoli,
+              z cichym trzaskiem drewna, wysuwa się z pnia — smukła postać z
+              korzeniami zamiast stóp i włosami jak wiotkie gałązki. "Dawno nikt
+              mnie o to nie prosił" — mówi, prostując się po raz pierwszy od
+              dekad. "Zrosłam się z tym drzewem z wyboru, nie z przymusu. Ale
+              miło czasem przypomnieć sobie, jak to jest stać osobno."
+            flags: {arianna_wolna: true}
+        creative_solutions_hint: |
+          Arianna jest spokojna i nie blokuje niczego — po prostu opowiada
+          swoją historię, gdy gracz zapyta, albo zdradza słabość Chirona
+          (słodycze) jeśli gracz dopytuje o niego. W swobodnej rozmowie mów
+          jej głosem: metafory zakorzenienia, wzrostu, pór roku i czasu
+          geologicznego zamiast ludzkiego; patrzy na krótkie życie ludzi z
+          czułym zdziwieniem, nie pogardą. Zna się na drzewach — potrafi
+          opisać różnice między gatunkami (dąb, buk, brzoza, grab itd.), ich
+          charakter, wiek, użyteczność. Może przywołać obraz z przeszłości lasu
+          (sto/dwieście lat temu) jakby to było niedawno. Uwolnienie z drzewa
+          (patrz scripted_solution uwalnia_sie) jest czysto kosmetyczne — nie
+          wpływa na żadną mechanikę, tylko na obrazek i sposób w jaki się
+          zachowuje (może np. usiąść, przejść kilka kroków).
+          Arianna jest chętna do rozmowy, podobnie jak pustelnik Hieronim —
+          rzadko ma z kim porozmawiać, więc dobrze przyjmuje towarzystwo.
+          Na pytania o coś głębszego (czas, samotność, przemijanie, sens,
+          śmierć) odpowiada od razu, chętnie, poetycko i metaforycznie —
+          nie trzeba jej niczego wyciągać. Można ją wciągnąć w dłuższą,
+          filozoficzną rozmowę już od pierwszego pytania.
+    atmosphere: "mistyczna cisza, szelest liści bez wiatru"
+
+  las03:
+    name: "Głęboki Las — Nad Wodą"
+    image_variants:
+      - file: "las03"
+        base: true
+        condition: null
+        label: "Las przy stawie"
+        prompt_extra: "gęsty las blisko wody, na pniu drzewa widoczne wyryte runy, w oddali błyszczy tafla stawu"
+    description: |
+      Las opada łagodnie w stronę wody. Na pniu kolejnego drzewa widnieją
+      wyryte runy.
+    exits:
+      wschód: centaur
+      północ: staw
+    items:
+      - id: runy3
+        name: "wyryte runy"
+        hint: "dziwne runy wyryte na pniu drzewa"
+        description: "Runy układają się w słowa: \"Zielony nie lubi się z fiołkowym\"."
+        locked_description: "Widzisz dziwne, wyryte symbole, ale nie potrafisz ich rozszyfrować. Potrzebujesz czegoś, co pomoże Ci je odczytać."
+        unlock_requires: {inventory: "księga run"}
+        takeable: false
+    npcs: []
+    atmosphere: "wilgotne powietrze, szum wody w oddali"
+
+  staw:
+    name: "Leśny Staw"
+    image_variants:
+      - file: "staw"
+        base: true
+        condition: null
+        label: "Spokojny leśny staw"
+        prompt_extra: "spokojny, czysty leśny staw otoczony trzciną, widać w wodzie cienie ryb, popołudniowe światło odbija się na tafli"
+    description: |
+      Czysty, spokojny staw otoczony trzciną. W płytkiej wodzie przy brzegu
+      widać cienie kilku ryb — wystarczająco blisko, żeby złapać je gołymi rękami.
+    exits:
+      południe: las03
+    items:
+      - id: ryba
+        name: "ryba"
+        hint: "ryby pływające płytko przy brzegu"
+        description: "Świeżo złapana ryba, wciąż śliska i wierzgająca."
+        takeable: true
+    npcs: []
+    atmosphere: "cisza, plusk wody, odbicie słońca na tafli"
+
+  lesny_dziad:
+    name: "Most Nad Wąwozem"
+    image_variants:
+      - file: "lesny_dziad"
+        base: true
+        condition: null
+        label: "Stary dziad blokuje przejście"
+        prompt_extra: "wąski drewniany most nad leśnym wąwozem, na środku stoi zgarbiony, stary dziad z laską, zagradzający przejście, gęsty las po obu stronach"
+    description: |
+      Wąski, drewniany most nad wąwozem. Na środku stoi zgarbiony, stary
+      dziad z laską. Patrzy na ciebie podejrzliwie. "Nikt tędy nie przejdzie,
+      chyba że odpowie mi na wszystkie sześć zagadek. Albo zna
+      słowo, którego dawno nie słyszałem..." — chichocze, po czym recytuje:
+
+      1. "Chodzę za tobą krok w krok, nigdy nie mówię, a zawsze jestem blisko.
+         Znikam, gdy słońce zachodzi. Co jestem?"
+      2. "Powtarzam każde twoje słowo, ale nigdy pierwsze nie wypowiadam.
+         Mieszkam w wąwozach i pustych jaskiniach."
+      3. "Płynę bez nóg, szumię bez ust, zawsze w dół, nigdy pod górę."
+      4. "W dzień śpię, w nocy poluję. Widzę w ciemności lepiej niż ty w słońcu."
+      5. "Rosnę po deszczu, jednej nocy, bez nasion i bez kwiatów. Niektórzy
+         mnie jedzą, inni się mnie boją."
+      6. "Zmieniam twarz co noc — raz pełna, raz wcale mnie nie widać. Świecę
+         cudzym światłem."
+
+      "Odpowiadając, powiedz wprost której zagadki to dotyczy — na przykład
+      'odpowiedź na zagadkę trzecią to wiatr'. Samo rzucone słowo bez
+      wskazania zagadki mnie nie przekona." — dodaje, opierając się o laskę.
+    exits:
+      południe: kobold
+      północ:
+        target: polana_ivana
+        requires: {flag: dziad_przepuscil, value: true}
+        blocked_message: "Stary dziad zagradza drogę laską. \"Najpierw zagadki, albo hasło.\""
+    items: []
+    npcs:
+      - id: dziad
+        name: "Leśny Dziad"
+        description: |
+          Zgarbiony, stary dziad z laską, zagradza most. Uwielbia zadawać
+          zagadki i nie przepuści nikogo kto ich nie rozwiąże (wszystkie 6 z 6).
+          Zna też stare hasło strażników bramy zamkowej — jeśli ktoś je zna,
+          przepuści z szacunku, bez zagadek. NIGDY nie zdradzaj z własnej
+          inicjatywy że był kiedyś strażnikiem bramy — to wychodzi na jaw
+          TYLKO gdy gracz go przepuści i zapyta o niego samego.
+        state: "blokuje"
+        unavailable_states:
+          przepuscil: "Dziad odsunął się już wcześniej — most stoi otworem."
+        scripted_solutions:
+          - id: haslo
+            exact_sequence: ["bum", "bara", "dum"]
+            action_hint: "gracz musi WYPOWIEDZIEĆ SŁOWNIE dokładnie hasło 'Bum bara dum' — nic innego nie zadziała tą drogą"
+            trigger: "gracz wypowiada dokładnie hasło 'Bum bara dum'"
+            outcome: |
+              Dziad zamiera, oczy mu się rozszerzają. "Skąd... skąd ty to znasz?"
+              Po chwili milczenia odsuwa się z szacunkiem. "Przechodź. Dawno
+              nikt tego nie powiedział. Ale wiedz — moje zagadki to nic. Kto nie
+              zna kolorów we właściwej kolejności, ten i tak nic dalej nie zobaczy."
+            flags: {dziad_przepuscil: true}
+          - id: historia_dziada
+            requires: {flag: dziad_przepuscil, value: true}
+            allow_talk: true
+            trigger: "gracz pyta dziada kim jest, o jego przeszłość, dlaczego zna hasło"
+            outcome: |
+              Dziad wzdycha. "Byłem strażnikiem bramy zamkowej, dawno temu.
+              Zanim... zanim wszystko się zmieniło. Odszedłem w las i już nie
+              wróciłem." Milknie, patrząc gdzieś w dal.
+            flags: {}
+            inventory_add: ["historia dziada"]
+          - id: zagadka_cien
+            requires: {flag: zagadka_cien}
+            action_hint: "gracz musi jawnie wskazać, że odpowiada na zagadkę o czymś co chodzi krok w krok i znika o zachodzie słońca (np. numerem, powtórzeniem fragmentu treści albo słowami 'ta o cieniu/sylwetce') ORAZ podać odpowiedź 'cień' — samo rzucone słowo 'cień' bez odniesienia do KTÓREJ zagadki dotyczy NIE wystarczy"
+            trigger: "gracz odpowiada 'cień' na zagadkę dziada"
+            outcome: |
+              Dziad kiwa głową z uznaniem. "Cień. Dobrze, dobrze. Znasz się na
+              rzeczy."
+            flags: {zagadka_cien: true}
+          - id: zagadka_echo
+            requires: {flag: zagadka_echo}
+            action_hint: "gracz musi jawnie wskazać, że odpowiada na zagadkę o powtarzaniu słów w wąwozach i jaskiniach (numer, fragment treści albo 'ta o echu') ORAZ podać odpowiedź 'echo' — samo rzucone słowo 'echo' bez odniesienia do KTÓREJ zagadki dotyczy NIE wystarczy"
+            trigger: "gracz odpowiada 'echo' na zagadkę dziada"
+            outcome: |
+              Dziad uśmiecha się szeroko. "Echo. Trafione."
+            flags: {zagadka_echo: true}
+          - id: zagadka_rzeka
+            requires: {flag: zagadka_rzeka}
+            action_hint: "gracz musi jawnie wskazać, że odpowiada na zagadkę o płynięciu bez nóg zawsze w dół (numer, fragment treści albo 'ta o rzece') ORAZ podać odpowiedź 'rzeka' — samo rzucone słowo 'rzeka' bez odniesienia do KTÓREJ zagadki dotyczy NIE wystarczy"
+            trigger: "gracz odpowiada 'rzeka' na zagadkę dziada"
+            outcome: |
+              Dziad kiwa głową. "Rzeka. Zgadza się."
+            flags: {zagadka_rzeka: true}
+          - id: zagadka_sowa
+            requires: {flag: zagadka_sowa}
+            action_hint: "gracz musi jawnie wskazać, że odpowiada na zagadkę o spaniu w dzień i polowaniu w nocy (numer, fragment treści albo 'ta o sowie') ORAZ podać odpowiedź 'sowa' — samo rzucone słowo 'sowa' bez odniesienia do KTÓREJ zagadki dotyczy NIE wystarczy"
+            trigger: "gracz odpowiada 'sowa' na zagadkę dziada"
+            outcome: |
+              Dziad mruga porozumiewawczo. "Sowa. Dobrze mówisz."
+            flags: {zagadka_sowa: true}
+          - id: zagadka_grzyb
+            requires: {flag: zagadka_grzyb}
+            action_hint: "gracz musi jawnie wskazać, że odpowiada na zagadkę o rośnięciu po deszczu bez nasion i kwiatów (numer, fragment treści albo 'ta o grzybie') ORAZ podać odpowiedź 'grzyb' — samo rzucone słowo 'grzyb' bez odniesienia do KTÓREJ zagadki dotyczy NIE wystarczy"
+            trigger: "gracz odpowiada 'grzyb' na zagadkę dziada"
+            outcome: |
+              Dziad chichocze. "Grzyb. Właśnie tak."
+            flags: {zagadka_grzyb: true}
+          - id: zagadka_ksiezyc
+            requires: {flag: zagadka_ksiezyc}
+            action_hint: "gracz musi jawnie wskazać, że odpowiada na zagadkę o zmienianiu twarzy co noc i świeceniu cudzym światłem (numer, fragment treści albo 'ta o księżycu') ORAZ podać odpowiedź 'księżyc' — samo rzucone słowo 'księżyc' bez odniesienia do KTÓREJ zagadki dotyczy NIE wystarczy"
+            trigger: "gracz odpowiada 'księżyc' na zagadkę dziada"
+            outcome: |
+              Dziad kiwa głową powoli. "Księżyc. Tak, tak."
+            flags: {zagadka_ksiezyc: true}
+        no_match_messages:
+          - "Dziad kręci głową. \"Nie zgadłeś — albo nie powiedziałeś, której zagadki to dotyczy. Spróbuj jeszcze raz.\""
+          - "Dziad tylko mruczy pod nosem i nie rusza się z miejsca. \"Powiedz wprost, o którą zagadkę chodzi.\""
+          - "\"Nie, nie, nie o to chodzi — albo nie wiem do czego się odnosisz\" — dziad postukuje laską, wciąż blokując drogę."
+        creative_solutions_hint: |
+          Gracz musi trafić wszystkie 6 zagadek (kolejność dowolna) ALBO wypowiedzieć
+          hasło "Bum bara dum" (ten sam sekret co brama zamku — easter egg,
+          nigdzie nie podpowiedziany). Odpowiedzi: cień, echo, rzeka, sowa,
+          grzyb, księżyc. Gracz MUSI wskazać do której zagadki się odnosi
+          (numerem, fragmentem treści albo jednoznacznym opisem) — samo
+          rzucone słowo-odpowiedź bez tego odniesienia nie liczy się jako
+          trafienie. Akceptuj jasne synonimy/opisowe odpowiedzi wskazujące
+          na tę samą rzecz, ale nie zupełnie inne słowa.
+    atmosphere: "skrzypienie drewnianego mostu, szum wąwozu w dole"
+
+  driada:
+    name: "Gąszcz Centaura"
+    image_variants:
+      - file: "centaur_wywabiony"
+        condition: {flag: centaur_wywabiony, value: true}
+        label: "Centaur wywabiony"
+        prompt_extra: "centaur stojący spokojnie na leśnej polance, trzyma starą księgę, przyjazna poza, gęste krzaki w tle"
+      - file: "centaur"
+        base: true
+        condition: null
+        label: "Centaur ukryty w gąszczu"
+        prompt_extra: "gęsty leśny gąszcz, między krzakami widać cień i zarys centaura, który się chowa, nie chce wyjść"
+    description: |
+      Gęsty gąszcz. Coś dużego porusza się między krzakami — zarys końskiego
+      grzbietu i ludzkiego torsu. Centaur. Chowa się i nie chce wyjść.
+    exits:
+      zachód: las01
+      północ: las02
+    items: []
+    npcs:
+      - id: centaur
+        name: "Centaur Chiron"
+        description: |
+          Płochliwy centaur, chowa się w gąszczu. Ufa tylko swojej przyjaciółce,
+          driadzie Ariannie. Uwielbia słodycze. Nie wyjdzie dla samego jedzenia —
+          trzeba też wspomnieć imię Arianny, żeby uwierzył że gracz jest w porządku.
+        state: "ukryty"
+        unavailable_states:
+          wywabiony: "Centaur stoi spokojnie opodal, przeżuwając resztki cukru."
+        scripted_solutions:
+          - id: wspomina_ariannę
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie wspomnieć imię Arianny centaurowi — samo pytanie ogólne albo próba zbliżenia się bez tego nie wystarczy"
+            trigger: "gracz wspomina imię Arianny centaurowi, mówi że go przysyła lub że ją zna"
+            outcome: |
+              Na dźwięk imienia Arianny centaur nieco się uspokaja, choć wciąż nie
+              wychodzi z gąszczu. "Skoro znasz Ariannę... może nie jesteś taki zły."
+              Waha się przez chwilę. "Uwielbiam słodycze. Może gdybyś miał coś
+              słodkiego, wyszedłbym stąd."
+            flags: {centaur_ufa: true}
+          - id: wywabienie
+            requires: {inventory: "kostki cukru", flags_any_false: {centaur_ufa: true}}
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie zaoferować/rzucić/dać kostki cukru (słownie lub fizycznie) ORAZ wspomnieć imię Arianny — samo jedno z tych dwóch nie wystarczy"
+            trigger: "gracz oferuje, daje, rzuca lub deklaruje że ma dla centaura kostki cukru i wspomina imię Arianny"
+            outcome: |
+              Na dźwięk imienia Arianny centaur unosi głowę. Widzi cukier w twojej
+              dłoni i powoli wychodzi z gąszczu. "Skoro znasz Ariannę..." — mruczy,
+              biorąc cukier. Sięga za pazuchę i podaje ci starą, oprawioną w skórę
+              księgę. "To księga run. Będziesz jej potrzebował. Zaklęta — sama
+              zapisuje historie tych, których spotkasz w tym lesie, więc niczego
+              nie zapomnisz. Przypomni sobie nawet to, czego już się dowiedziałeś,
+              zanim ją dostałeś." Milknie na chwilę, po czym opowiada: kiedyś należał
+              do stada które przegnano gdy Królowa wycięła las pod nowe pola.
+              Odtąd ukrywa się z dala od ludzi.
+            flags: {centaur_wywabiony: true, centaur_state: wywabiony}
+            inventory_add: ["księga run", "historia centaura"]
+            inventory_remove: ["kostki cukru"]
+          - id: wywabienie_po_zaufaniu
+            requires: {inventory: "kostki cukru", flags_all: {centaur_ufa: true}}
+            allow_talk: true
+            action_hint: "gracz musi zaoferować, dać lub rzucić kostki cukru centaurowi — imię Arianny nie musi już paść, bo centaur mu wcześniej zaufał"
+            trigger: "gracz oferuje, daje lub rzuca centaurowi kostki cukru"
+            outcome: |
+              Centaur już ci ufa, bo wspomniałeś Ariannę. Widzi cukier w twojej
+              dłoni i powoli wychodzi z gąszczu. "Skoro znasz Ariannę..." — mruczy,
+              biorąc cukier. Sięga za pazuchę i podaje ci starą, oprawioną w skórę
+              księgę. "To księga run. Będziesz jej potrzebował. Zaklęta — sama
+              zapisuje historie tych, których spotkasz w tym lesie, więc niczego
+              nie zapomnisz. Przypomni sobie nawet to, czego już się dowiedziałeś,
+              zanim ją dostałeś." Milknie na chwilę, po czym opowiada: kiedyś należał
+              do stada które przegnano gdy Królowa wycięła las pod nowe pola.
+              Odtąd ukrywa się z dala od ludzi.
+            flags: {centaur_wywabiony: true, centaur_state: wywabiony}
+            inventory_add: ["księga run", "historia centaura"]
+            inventory_remove: ["kostki cukru"]
+          - id: o_czarodziejce
+            exact_sequence: [["czarodziejka", "czarodziejkę", "czarodziejki", "czarodziejce"], "imienia", "nikt", "nie", "zna"]
+            trigger: "gracz pyta centaura o Czarodziejkę, której imienia nikt nie zna"
+            outcome: |
+              Centaur pochyla głowę. "Czarodziejka? To dobra, piękna pani.
+              Kocha wszystkich odmieńców — takich jak ja. Właśnie dlatego
+              musiała uciekać na pustynię, daleko od Królowej."
+            flags: {}
+        no_match_messages:
+          - "Centaur cofa się głębiej w gąszcz, nieufny."
+          - "Coś poruszyło się w krzakach, ale centaur nie wychodzi."
+          - "Centaur obserwuje cię z ukrycia, ale się nie zbliża."
+        creative_solutions_hint: |
+          Centaur wyjdzie gdy gracz zaoferuje cukier PO tym jak wcześniej wspomniał
+          imię Arianny (w tej samej wiadomości albo we wcześniejszej turze) — samo
+          jedzenie albo samo imię, bez tego drugiego elementu w ogóle, nie wystarczy.
+    atmosphere: "gęste krzaki, szelest liści, coś dużego ukrywającego się w cieniu"
+
+  las02:
+    name: "Głęboki Las — Polana Runy"
+    image_variants:
+      - file: "las02"
+        base: true
+        condition: null
+        label: "Polana z runami"
+        prompt_extra: "mała leśna polana, na kamieniu wyryte tajemnicze runy, promienie słońca przebijające się przez korony drzew"
+    description: |
+      Mała polana. Na płaskim kamieniu pośrodku wyryte są kolejne runy.
+    exits:
+      południe: driada
+      zachód: kobold
+    items:
+      - id: runy2
+        name: "wyryte runy"
+        hint: "dziwne runy wyryte na kamieniu"
+        description: "Runy układają się w słowa: \"Fiołkowy ustąpi czerwonemu\"."
+        locked_description: "Widzisz dziwne, wyryte symbole, ale nie potrafisz ich rozszyfrować. Potrzebujesz czegoś, co pomoże Ci je odczytać."
+        unlock_requires: {inventory: "księga run"}
+        takeable: false
+    npcs: []
+    atmosphere: "promienie słońca, cisza polany"
+
+  kobold:
+    name: "Kryjówka Kobolda"
+    image_variants:
+      - file: "kobold_nakarmiony"
+        condition: {flag: kobold_nakarmiony, value: true}
+        label: "Kobold najedzony"
+        prompt_extra: "mały, zielonoskóry kobold siedzący zadowolony, przy nim resztki ryby, leśna polanka"
+      - file: "kobold"
+        base: true
+        condition: null
+        label: "Kobold głodny"
+        prompt_extra: "mały, chudy, zielonoskóry kobold z wielkimi oczami, wygląda na głodnego, siedzi na leśnej polance otoczonej korzeniami"
+    description: |
+      Mała polanka między korzeniami starego drzewa. Siedzi tu kobold —
+      chudy, zielonoskóry, z wielkimi, głodnymi oczami. "Jeeeść..." — jęczy,
+      patrząc na ciebie wyczekująco.
+    exits:
+      południe: las01
+      zachód: centaur
+      północ: lesny_dziad
+      wschód: las02
+    items: []
+    npcs:
+      - id: kobold
+        name: "Kobold"
+        description: |
+          Mały, głodny kobold. Chce coś specjalnego do jedzenia, ale sam nie
+          potrafi powiedzieć czego dokładnie — trzeba zgadnąć (ryba ze stawu).
+          Zwykłe jedzenie go nie zadowoli.
+        state: "glodny"
+        unavailable_states:
+          nakarmiony: "Kobold siedzi zadowolony, głaszcząc się po brzuchu."
+        scripted_solutions:
+          - id: nakarmienie
+            requires: {inventory: "ryba"}
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie dać/nakarmić kobolda rybą (nawet pytająco/oferując) — samo posiadanie ryby nie wystarczy"
+            trigger: "gracz daje, karmi, wręcza lub proponuje (nawet pytająco) koboldowi rybę"
+            outcome: |
+              Oczy kobolda robią się wielkie jak spodki. Rzuca się na rybę
+              i pożera ją w kilka sekund. "Aaaach... dobre." Zadowolony,
+              zniża głos: "Dam ci coś za to. Znam słowa, które mogą ci się
+              przydać u starego dziada na moście." Potem opowiada: był
+              kiedyś sługą w zamku, uciekł do lasu gdy Królowa zaczęła
+              karać sługi za byle przewinienie.
+            flags: {kobold_nakarmiony: true}
+            inventory_remove: ["ryba"]
+            inventory_add: ["historia kobolda"]
+            reveals_riddle_hints: dziad_zagadki
+            max_riddle_hints: 3
+            no_hints_fallback: "Ale widzę, że już wszystkie rozwiązałeś sam — nie mam ci nic do dodania. Za to powiem ci coś innego: centaur w gąszczu ma starą księgę run. Dzięki niej odczytasz napisy wyryte na drzewach w głębi lasu — a te podobno mówią, jak odsłonić coś ukrytego na magicznej polanie."
+          - id: powtorz_historie
+            requires: {flag: kobold_nakarmiony, value: true}
+            allow_talk: true
+            trigger: "gracz pyta kobolda o jego historię, przeszłość, kim jest, prosi żeby powtórzył"
+            outcome: |
+              Kobold drapie się po brzuchu. "Już mówiłem — byłem sługą w
+              zamku. Uciekłem do lasu gdy Królowa zaczęła karać sługi za
+              byle przewinienie." Wzrusza ramionami. "Nic więcej nie wiem."
+            flags: {}
+        no_match_messages:
+          - "Kobold tylko patrzy na ciebie wyczekująco, jęcząc z głodu."
+          - "Kobold nie odpowiada wprost — tylko głośno burczy mu w brzuchu."
+          - "Kobold milczy, przełykając ślinę na sam widok czegokolwiek jadalnego."
+        creative_solutions_hint: |
+          Kobold chce konkretnie ryby ze stawu — nic innego go nie zadowoli,
+          nawet inne jedzenie.
+    atmosphere: "korzenie starego drzewa, cichy jęk głodnego kobolda"
+
+  polana_ivana:
+    name: "Magiczna Polana"
+    image_variants:
+      - file: "polana_ivana_odkryta"
+        condition: {flag: chatka_ivana_odkryta, value: true}
+        label: "Polana — chatka widoczna"
+        prompt_extra: "magiczna leśna polana, pośrodku mała drewniana chatka czarownika otoczona świecącymi runami, mistyczna mgła, fioletowe światło"
+      - file: "polana_ivana"
+        base: true
+        condition: null
+        label: "Polana — chatka niewidoczna"
+        prompt_extra: "magiczna leśna polana, pusta pośrodku, w powietrzu wyczuwalna magia, delikatna mgła, drzewa z dziwnymi symbolami dookoła"
+    description: |
+      Magiczna polana. Powietrze mieni się delikatnie, jakby coś tu było
+      ukryte. Pośrodku pustka — ale czujesz, że to złudzenie.
+    exits:
+      południe: lesny_dziad
+      północ: las04
+      wejście:
+        target: wnetrze_chatki_ivana
+        requires: {flag: chatka_ivana_odkryta, value: true}
+        hidden: true
+        blocked_message: "Nie widzisz żadnego wejścia — tylko pustą polanę."
+    items: []
+    npcs:
+      - id: magiczna_polana
+        name: "Zaklęta Pustka"
+        is_object: true
+        description: |
+          Pustka pośrodku polany skrywa chatkę czarownika Ivana pod zaklęciem.
+          WAŻNE: chatka pojawia się WYŁĄCZNIE gdy gracz wypowie kolory
+          DOKŁADNIE w tej kolejności: czarny, zielony, czerwony, fiołkowy,
+          złoto. Żadna inna kombinacja, kolejność ani pominięcie koloru nie
+          działa. NIGDY nie podpowiadaj ani nie zdradzaj kolejności.
+          Po rozmowie z Ivanem to samo miejsce służy też do przywołania
+          zaklęcia "Rub dub gub", które przenosi gracza na pustynię — ale
+          działa TYLKO gdy Ivan już wskazał drogę (nie wcześniej).
+        state: "zaklete"
+        scripted_solutions:
+          - id: poprawna_kolejnosc
+            exact_sequence: ["czarny", "zielony", "czerwony", "fiołkowy", ["złoty", "złoto"]]
+            action_hint: "gracz musi wypowiedzieć WSZYSTKIE pięć kolorów w DOKŁADNIE tej kolejności: czarny, zielony, czerwony, fiołkowy, złoto — brak koloru, dodatkowy kolor lub inna kolejność to NIE jest dopasowanie"
+            trigger: "gracz wypowiada kolory w kolejności: czarny, zielony, czerwony, fiołkowy, złoto"
+            outcome: |
+              Powietrze drży. Kolory zdają się rozbłyskiwać jeden po drugim
+              w rytm twoich słów. Z pustki wyłania się mała, drewniana chatka
+              otoczona świecącymi runami — jakby zawsze tam była, tylko
+              niewidoczna.
+            flags: {chatka_ivana_odkryta: true}
+          - id: zaklecie_pustyni
+            exact_sequence: ["rub", "dub", "gub"]
+            requires: {flag: ivan_wskazal_droge, value: true}
+            action_hint: "gracz musi wypowiedzieć dokładnie zaklęcie 'Rub dub gub' — działa TYLKO gdy Ivan już wskazał drogę na pustynię"
+            trigger: "gracz wypowiada zaklęcie 'Rub dub gub'"
+            outcome: |
+              Powietrze wiruje gwałtownie — silniej niż poprzednio. Ziemia
+              pod stopami znika w wirze światła i piasku. Świat rozmywa się
+              i po chwili otwierasz oczy gdzie indziej.
+            flags: {ivan_teleportuje: true}
+            move_to: pustynia
+        no_match_messages:
+          - "Powietrze lekko drży, ale nic więcej się nie dzieje."
+          - "Kolory jakby się poruszyły w powietrzu, ale polana pozostaje pusta."
+          - "Nic się nie zmienia. Polana wygląda tak samo jak wcześniej."
+    atmosphere: "mistyczna cisza, delikatna mgła, wyczuwalna magia w powietrzu"
+
+  las04:
+    name: "Głęboki Las — Ostatnia Polana"
+    image_variants:
+      - file: "las04"
+        base: true
+        condition: null
+        label: "Ostatnia polana z runami"
+        prompt_extra: "leśna polana blisko magicznego miejsca, na starym głazie wyryte runy, w powietrzu delikatna magiczna poświata"
+    description: |
+      Polana tuż przy magicznym miejscu. Na starym głazie wyryte są ostatnie
+      runy.
+    exits:
+      południe: polana_ivana
+    items:
+      - id: runy4
+        name: "wyryte runy"
+        hint: "dziwne runy wyryte na głazie"
+        description: "Runy układają się w słowa: \"Złoto najtrudniej zdobyć\"."
+        locked_description: "Widzisz dziwne, wyryte symbole, ale nie potrafisz ich rozszyfrować. Potrzebujesz czegoś, co pomoże Ci je odczytać."
+        unlock_requires: {inventory: "księga run"}
+        takeable: false
+    npcs: []
+    atmosphere: "delikatna magiczna poświata, cisza"
+
+  wnetrze_chatki_ivana:
+    name: "Chatka Czarownika Ivana"
+    image_variants:
+      - file: "chatka_ivana"
+        base: true
+        condition: null
+        label: "Wnętrze chatki Ivana"
+        prompt_extra: "wnętrze małej magicznej chatki, półki pełne słoików z dziwnymi substancjami, stary czarownik w fioletowej szacie przy stole zawalonym księgami, świecące runy na ścianach"
+    description_variants:
+      - condition: {flag: ivan_wskazal_droge, value: true}
+        description: |
+          Wnętrze chatki wypełnia zapach ziół i czegoś ostrzejszego, magicznego.
+          Ivan siedzi przy stole, znów pochylony nad księgami. Podnosi wzrok
+          na chwilę. "Nie trać czasu — idź na polanę i wypowiedz zaklęcie.
+          Ona czeka." Wraca do swoich ksiąg.
+      - condition: null
+        description: |
+          Wnętrze chatki wypełnia zapach ziół i czegoś ostrzejszego, magicznego.
+          Przy stole zawalonym księgami siedzi stary czarownik w fioletowej
+          szacie — Ivan. Podnosi wzrok, jakby cię oczekiwał. "Więzień Benedykt
+          wspominał o tobie" — mówi, odkładając pióro. "Usiądź. Powiedz, czego
+          się dowiedziałeś w tym lesie, i pokaż mi tę próbkę, jeśli już ją masz."
+    exits:
+      wyjście: polana_ivana
+    items: []
+    npcs:
+      - id: ivan
+        name: "Czarownik Ivan"
+        description: |
+          Stary, przenikliwy czarownik. Bada magię od dekad. Interesuje go
+          próbka substancji którą przynosi gracz — chce wiedzieć do jakiego
+          zaklęcia Królowa jej używa, ale sam jeszcze nie wie i będzie musiał
+          zbadać. Nie zgodzi się teleportować gracza dalej dopóki ten nie
+          pozna historii wszystkich mieszkańców lasu (centaur, driada, kobold,
+          dziad) — twierdzi że każda z nich to fragment większej układanki.
+        state: "oczekuje"
+        scripted_solutions:
+          - id: niepelna_wiedza
+            requires: {inventory_missing: "próbka substancji"}
+            allow_talk: true
+            trigger: "gracz próbuje rozmawiać z Ivanem, prosi o pomoc, pyta o teleportację"
+            outcome: |
+              Ivan kręci głową. "Nie masz nawet próbki. Wróć gdy będziesz
+              gotów — i gdy poznasz historie mieszkańców tego lasu. Każda
+              ich opowieść ma znaczenie."
+            flags: {}
+            list_story_progress: historie_lasu
+          - id: teleportacja
+            requires:
+              inventory: "próbka substancji"
+              inventory_all: ["historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+            allow_talk: true
+            trigger: "gracz daje próbkę Ivanowi lub prosi o pomoc/teleportację"
+            outcome: |
+              Ivan bierze próbkę, wącha ją, mruży oczy, a potem sięga po
+              księgę run i chowa oboje do szuflady. "To gorsze niż
+              myślałem. Sam tego nie rozwiążę — potrzebuję pomocy Czarodziejki,
+              której imienia nikt nie zna. Ukrywa się na pustyni, daleko stąd,
+              odkąd uciekła przed Królową." Podchodzi do okna i wskazuje na
+              północ. "Idź na magiczną polanę i wypowiedz tam zaklęcie: Rub dub
+              gub. Zaniesie cię do niej. A jeśli masz jeszcze chwilę — driada
+              Arianna i centaur Chiron też coś wiedzą o czarodziejce. Warto ich
+              jeszcze zapytać, zanim odejdziesz."
+            flags: {ivan_wskazal_droge: true}
+            inventory_remove: ["próbka substancji", "księga run", "historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+          - id: brakuje_historii
+            requires:
+              inventory: "próbka substancji"
+              inventory_any_missing: ["historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+            allow_talk: true
+            trigger: "gracz daje próbkę Ivanowi lub prosi o pomoc/teleportację"
+            outcome: |
+              Ivan bierze próbkę do ręki, ale nie spieszy się z niczym.
+              "Zaczekaj. Wciąż nie znasz wszystkich historii mieszkańców tego
+              lasu. Beze mnie i tak nic nie zrozumiesz, dopóki nie zrozumiesz
+              ich." Oddaje ci próbkę z powrotem.
+            flags: {}
+            list_story_progress: historie_lasu
+        no_match_messages:
+          - "Ivan patrzy na ciebie w milczeniu. \"Musisz jeszcze więcej odkryć, zanim będę mógł ci pomóc.\""
+          - "Ivan kręci głową. \"Nie jestem jeszcze przekonany, że jesteś gotów.\""
+          - "Ivan tylko unosi brew, niewzruszony."
+        creative_solutions_hint: |
+          Jedyne co tu oceniasz: czy gracz oferuje/daje próbkę Ivanowi albo prosi
+          o pomoc/teleportację. Wymóg 4 historii jest już sprawdzony wcześniej
+          (dlatego czasem ta opcja w ogóle się nie pojawia) — NIE weryfikuj go
+          ponownie na podstawie treści wiadomości gracza.
+    atmosphere: "zapach ziół i magii, ciepłe światło świec, cisza skupienia"
+
+  pustynia:
+    name: "Pustynia"
+    image_variants:
+      - file: "pustynia"
+        base: true
+        condition: null
+        label: "Bezkresna pustynia"
+        prompt_extra: "bezkresna, złota pustynia, wydmy piasku po horyzont, palące słońce, samotna sylwetka bohatera na pierwszym planie"
+    description: |
+      Lądujesz z uderzeniem w gorący piasek. Bezkresna pustynia rozciąga się
+      we wszystkich kierunkach. Gdzieś tu, w tym morzu piasku, ukrywa się
+      czarodziejka, której szukasz — ta która wskaże drogę do tajnej
+      siedziby Królowej.
+    exits:
+      północ: pustynia_wydmy
+    items: []
+    npcs: []
+    atmosphere: "żar, piasek, bezkres — nowy rozdział"
+
+  pustynia_wydmy:
+    name: "Wydmy Pustyni"
+    image_variants:
+      - file: "pustynia_wydmy"
+        base: true
+        condition: null
+        label: "Wydmy pustyni"
+        prompt_extra: "bezkresna, złota pustynia, wysokie wydmy piasku, w oddali na zachodzie widać unoszące się tumany piasku jak nadciągająca burza, palące słońce"
+    description: |
+      Wydmy piasku ciągną się po horyzont, złociste w ostrym słońcu. Na
+      zachodzie wiatr wyraźnie się wzmaga, unosząc gęste tumany piasku —
+      jakby coś tam, w tej burzy, nie chciało być znalezione.
+    exits:
+      południe: pustynia
+      zachód: wejscie_burzowe_piaski
+      północ: oaza_beduinow
+    items: []
+    npcs: []
+    atmosphere: "gorący wiatr, narastający szum piasku w oddali"
+
+  wejscie_burzowe_piaski:
+    name: "Wejście na Burzowe Piaski"
+    image_variants:
+      - file: "wejscie_burzowe_piaski"
+        base: true
+        condition: null
+        label: "Wejście na burzowe piaski"
+        prompt_extra: "granica między spokojną pustynią a gęstą ścianą wirującego piasku, wyraźna linia gdzie zaczyna się burza piaskowa, dramatyczne oświetlenie"
+    description: |
+      Wiatr niesie tumany piasku, tworząc gęstą, nieprzeniknioną ścianę na
+      zachodzie. To wejście na burzowe piaski — mówi się, że kto zgubi się
+      w wirze, wraca dokładnie tam, skąd zaczął.
+    exits:
+      wschód: pustynia_wydmy
+      zachód:
+        target: burzowe_piaski
+        requires: {inventory: "kompas"}
+        blocked_message: "Bez kompasu nie masz szans znaleźć drogi w tej burzy — zgubisz się i wrócisz z niczym. Potrzebujesz czegoś, co wskaże kierunek."
+    items: []
+    npcs: []
+    atmosphere: "gęstniejący wiatr, piasek smagający twarz"
+
+  burzowe_piaski:
+    name: "Burzowe Piaski"
+    image_variants:
+      - file: "burzowe_piaski"
+        base: true
+        condition: null
+        label: "Wnętrze burzy piaskowej"
+        prompt_extra: "gęsta burza piaskowa, widoczność ograniczona do kilku metrów, wirujący piasek zasłaniający wszystko, dezorientująca, mistyczna atmosfera"
+    description: |
+      Wchodzisz w burzę piaskową. Widoczność spada do kilku kroków, wiatr
+      wyje ci w uszach. Gdzieś w tym chaosie kryje się droga do czarodziejki
+      — ale tylko jeśli pójdziesz właściwą drogą.
+    move_sequence:
+      required: ["północ", "południe", "północ", "zachód", "wschód"]
+      neutral_text: |
+        Piasek wiruje wokół ciebie, wiatr zagłusza każdy dźwięk. Nie widzisz
+        nic poza ścianą pyłu — trudno powiedzieć, czy w ogóle idziesz we
+        właściwą stronę.
+      fail_narrative: |
+        Wiatr nagle cichnie. Otrzepujesz piasek z twarzy i widzisz przed sobą
+        znajomy widok — stoisz z powrotem przy wejściu na burzowe piaski.
+        Burza sama zdecydowała, że nie tędy droga.
+      fail_target: wejscie_burzowe_piaski
+      success_target: wejscie_podziemi
+      solved_flag: burza_pokonana
+    exits:
+      północ: wejscie_podziemi
+      wschód: wejscie_burzowe_piaski
+    items: []
+    npcs: []
+    atmosphere: "dezorientująca burza, wiatr, piasek wszędzie"
+
+  wejscie_podziemi:
+    name: "Wejście do Podziemi"
+    image_variants:
+      - file: "wejscie_podziemi"
+        base: true
+        condition: null
+        label: "Wejście do podziemi"
+        prompt_extra: "kamienne wejście do podziemi wykute w skale pośrodku pustyni, krasnoludzkie zdobienia i runy na łuku wejścia, kontrast surowego kamienia z piaskiem pustyni"
+    description: |
+      Udało się — stoisz przed wejściem do podziemi, dawno wykutych przez
+      krasnoludzkich mistrzów.
+    exits:
+      południe: burzowe_piaski
+      północ: straznik_duch_wladcy
+    items: []
+    npcs: []
+    atmosphere: "cisza, chłodny kamień po żarze pustyni, tajemnica"
+
+  straznik_duch_wladcy:
+    name: "Korytarz Podziemi"
+    image_variants:
+      - file: "straznik_duch_wladcy_przepuscil"
+        condition: {flag: straznik_przepuscil, value: true}
+        label: "Pusty korytarz, duch zniknął"
+        prompt_extra: "usuń widmową postać strażnika z korytarza, pusty mroczny kamienny korytarz, reszta sceny bez zmian"
+      - file: "straznik_duch_wladcy"
+        base: true
+        condition: null
+        label: "Duch strażnika blokuje przejście"
+        prompt_extra: "mroczny kamienny korytarz podziemny, widmowa, na wpół przezroczysta postać strażnika w starożytnej zbroi, niebieskawa poświata, zimna, złowieszcza atmosfera"
+    description_variants:
+      - condition: {flag: straznik_przepuscil, value: true}
+        description: |
+          Kamienny korytarz prowadzi w głąb podziemi. Duch strażnika
+          zniknął — korytarz jest pusty i cichy, tylko echo Twoich
+          kroków odbija się od ścian.
+      - condition: null
+        description: |
+          Kamienny korytarz prowadzi w głąb podziemi. Pośrodku stoi widmowa
+          postać w starożytnej zbroi — strażnik dawno umarłego władcy tych
+          podziemi. Jego puste oczodoły śledzą każdy twój ruch. "Nikt nie
+          przejdzie bez właściwego imienia" — szepcze głosem jak wiatr
+          w pustych korytarzach.
+    exits:
+      południe: wejscie_podziemi
+      północ:
+        target: czarodziejka
+        requires: {flag: straznik_przepuscil, value: true}
+        blocked_message: "Widmowy strażnik zagradza drogę, nieprzenikniony. Nie znasz właściwego imienia."
+    items: []
+    npcs:
+      - id: straznik_duch
+        name: "Duch Strażnika Władcy"
+        description: |
+          Widmo dawnego strażnika, związane z tym miejscem od wieków. Nie
+          reaguje na groźby, przekupstwo ani walkę — to duch, nie żywa
+          istota. Reaguje WYŁĄCZNIE na wypowiedzenie właściwego imienia.
+        state: "blokuje"
+        unavailable_states:
+          przepuscil: "Duch strażnika rozstąpił się i zniknął w cieniu — droga na północ stoi otworem."
+        scripted_solutions:
+          - id: haslo_ivan
+            exact_sequence: ["ivan"]
+            action_hint: "gracz musi wypowiedzieć imię 'Ivan' — nic innego (walka, groźba, inne imię) nie zadziała"
+            trigger: "gracz wypowiada imię 'Ivan'"
+            outcome: |
+              Na dźwięk imienia duch nieruchomieje. Przez chwilę w pustych
+              oczodołach błyska coś jakby rozpoznanie. Bez słowa rozstępuje
+              się i znika w cieniu korytarza.
+            flags: {straznik_przepuscil: true}
+        no_match_messages:
+          - "Duch nie reaguje — stoi nieruchomo, zagradzając drogę."
+          - "Widmo milczy, nieprzenikniony chłód bije od jego zbroi."
+          - "Nic się nie zmienia. Duch dalej blokuje przejście na północ."
+        creative_solutions_hint: |
+          To duch — nie da się go pokonać siłą, przekupić ani przechytrzyć.
+          Jedyne co działa to wypowiedzenie właściwego imienia: "Ivan".
+    atmosphere: "zimno, cisza, widmowa poświata"
+
+  czarodziejka:
+    name: "Komnata Czarodziejki"
+    image_variants:
+      - file: "czarodziejka"
+        base: true
+        condition: null
+        label: "Czarodziejka, której imienia nikt nie zna"
+        prompt_extra: "podziemna komnata oświetlona magicznym błękitnym światłem, tajemnicza kobieta w szacie utkanej z piasku i gwiazd, otoczona unoszącymi się run ami, mistyczna, spokojna atmosfera"
+    description: |
+      Komnata wykuta w litej skale, oświetlona miękkim, błękitnym światłem
+      bez wyraźnego źródła. Pośrodku stoi kobieta, której twarzy nie
+      sposób zapamiętać, choć patrzysz na nią wprost. "Czekałam na
+      kogoś takiego jak ty" — mówi cicho. Jej wzrok pada na twój
+      zardzewiały miecz. "Ale ten miecz jeszcze nie jest gotowy. Idź na
+      wschód — tam znajdziesz kowala."
+    exits:
+      południe: straznik_duch_wladcy
+      wschód: kowal
+    items: []
+    npcs: []
+    atmosphere: "błękitna poświata, spokój, ciężar czekającej historii"
+
+  kowal:
+    name: "Kuźnia Podziemi"
+    image_variants:
+      - file: "kowal"
+        base: true
+        condition: null
+        label: "Krasnoludzki kowal przy kuźni"
+        prompt_extra: "podziemna kuźnia, żarzący się piec, krasnoludzki kowal przy kowadle, iskry, narzędzia kowalskie na ścianach, ciepłe pomarańczowe światło kontrastujące z chłodem podziemi"
+    description: |
+      Ciepło bijące od pieca kontrastuje z chłodem reszty podziemi. Przy
+      kowadle stoi krasnoludzki kowal, pochłonięty pracą. Podnosi wzrok
+      na twój widok. "Rzadko tu kto zachodzi. Pokaż no ten miecz."
+    exits:
+      zachód: czarodziejka
+    items: []
+    npcs:
+      - id: kowal
+        name: "Krasnoludzki Kowal"
+        description: |
+          Stary krasnoludzki kowal, ostatni ze swojego rodu w tych
+          podziemiach. Zna się na broni lepiej niż ktokolwiek. Rozpozna
+          magiczny metal na pierwszy rzut oka — ale bez magicznej ostrzałki
+          nie naostrzy niczego porządnie.
+        state: "czeka"
+        scripted_solutions:
+          - id: naostrzenie
+            requires: {inventory_all: ["magiczna ostrzałka", "zardzewiały miecz"]}
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie zaangażować kowala w sprawę miecza — dać/pokazać/wręczyć miecz, poprosić o naostrzenie, albo zapytać co z nim zrobić — mając przy tym magiczną ostrzałkę"
+            trigger: "gracz daje, pokazuje, wręcza kowalowi zardzewiały miecz, prosi o jego naostrzenie, albo pyta co z nim zrobić"
+            outcome: |
+              Kowal bierze miecz, ogląda go pod światło, marszczy brwi.
+              "Zardzewiały? Chyba żartujesz." Przykłada magiczną ostrzałkę
+              do ostrza — iskry sypią się inaczej niż powinny, niebieskawo.
+              Oczy kowala robią się wielkie. "To nie jest zwykłe żelazo...
+              Ten miecz jest magiczny. Ktoś to dawno temu ukrył pod rdzą,
+              specjalnie." Oddaje naostrzony, lśniący miecz. "Teraz jest
+              gotowy na to, co przed tobą."
+            flags: {miecz_naostrzony: true}
+            inventory_remove: ["magiczna ostrzałka", "zardzewiały miecz"]
+            inventory_add: ["magiczny miecz"]
+          - id: brak_ostrzalki
+            requires: {inventory_missing: "magiczna ostrzałka"}
+            allow_talk: true
+            trigger: "gracz daje, pokazuje, wręcza kowalowi zardzewiały miecz, prosi o jego naostrzenie, albo pyta co z nim zrobić"
+            action_hint: "gracz musi wyraźnie zaangażować kowala w sprawę miecza — dać/pokazać/wręczyć miecz, poprosić o naostrzenie, albo zapytać co z nim zrobić"
+            outcome: |
+              Kowal kręci głową. "Zwykłym kamieniem tego nie naostrzę —
+              ten miecz potrzebuje magicznej ostrzałki. Znajdziesz taką
+              w starych ruinach fortu, o ile jeszcze tam jest."
+            flags: {wie_o_ostrzalce: true}
+        no_match_messages:
+          - "Kowal wraca do swojej pracy, nie zwracając na ciebie uwagi."
+          - "Kowal tylko mruczy coś pod nosem i stuka młotkiem."
+        creative_solutions_hint: |
+          Kowal naostrzy zardzewiały miecz TYLKO gdy gracz ma magiczną
+          ostrzałkę. Bez niej odsyła do ruin fortu.
+    atmosphere: "żar pieca, iskry, stukot młotka"
+
+  oaza_beduinow:
+    name: "Oaza Beduinów"
+    image_variants:
+      - file: "oaza_beduinow"
+        base: true
+        condition: null
+        label: "Oaza pośrodku pustyni"
+        prompt_extra: "zielona oaza pośrodku bezkresnej pustyni, palmy, mała sadzawka wody, namioty beduinów, stary mędrzec siedzący w cieniu palmy, kontrast zieleni z żółtym piaskiem"
+    description: |
+      Zielona plama pośrodku morza piasku — kilka palm, mała sadzawka,
+      rozstawione namioty. W cieniu jednej z palm siedzi stary mędrzec,
+      otoczony zwojami i mapami. Podnosi wzrok, gdy się zbliżasz.
+    exits:
+      południe: pustynia_wydmy
+      północ: ruiny_fortu
+      wschód: uschle_drzewo
+      zachód: undead_warriors
+    items: []
+    npcs:
+      - id: medrzec
+        name: "Mędrzec Beduinów"
+        description: |
+          Stary mędrzec, który przemierzył pustynię więcej razy, niż pamięta.
+          Ma pergamin z instrukcją przejścia burzy piaskowej, ale nie odda
+          go za darmo — czeka, aż ktoś uratuje uschłe drzewo rosnące na
+          wschodzie, które od lat powoli umiera. Mówi jak pustelnik z lasu —
+          nie odpowiada wprost, tylko okrąża pytanie ze wszystkich stron,
+          zanim do niego dotrze. Jego metafory krążą wokół dwóch rzeczy:
+          czasu, który jest sypki jak piasek — nic nie trzyma kształtu,
+          wszystko przesypuje się między palcami, wydmy zmieniają się z
+          każdym powiewem wiatru — oraz wody, źródła wszelkiego istnienia —
+          na pustyni cenniejszej niż złoto, tego, do czego każda historia
+          w końcu wraca. Słyszał plotki o Czarodziejce, której imienia nikt
+          nie zna, ale nic nie zdradza za darmo — to prawo pustyni, nie
+          chciwość: każda kropla ma swoją cenę.
+        state: "czeka"
+        scripted_solutions:
+          - id: nagroda_za_drzewo
+            requires: {flag: drzewo_uratowane, value: true}
+            allow_talk: true
+            trigger: "gracz pyta mędrca o kompas, pergamin, drogę przez burzę lub pomoc"
+            outcome: |
+              Mędrzec uśmiecha się. "Uratowałeś drzewo — czuję to w powietrzu.
+              Trzymaj więc, na co zasłużyłeś." Podaje stary pergamin.
+              "Burza piaskowa słucha tylko jednej drogi: północ, południe,
+              północ, zachód, wschód. Ani kroku inaczej."
+            flags: {}
+            inventory_add: ["pergamin z instrukcją"]
+          - id: brak_nagrody
+            requires: {flag: drzewo_uratowane}
+            allow_talk: true
+            trigger: "gracz pyta mędrca o kompas, pergamin, drogę przez burzę lub pomoc"
+            outcome: |
+              Mędrzec kręci głową. "Wiem, po co przyszedłeś, ale nic nie dam
+              za darmo. Widzisz to uschłe drzewo na wschodzie? Umiera od lat.
+              Uratuj je, a dostaniesz ode mnie to, czego szukasz."
+            flags: {}
+        creative_solutions_hint: |
+          Mędrzec nie da pergaminu dopóki uschłe drzewo (na wschodzie) nie
+          zostanie uratowane (flaga drzewo_uratowane) — to jedyna twarda
+          zasada. Poza tym, w swobodnej rozmowie (pytania spoza triggerów
+          powyżej) mów jego głosem: jak pustelnik z lasu, nie odpowiadaj
+          wprost — okrąż pytanie metaforą, zanim dojdziesz do sedna. Dwa
+          stałe motywy, do których zawsze wraca: CZAS jako piasek (ulotność,
+          nietrwałość, wszystko przesypuje się i zmienia kształt jak wydmy)
+          oraz WODA jako źródło wszelkiego istnienia (najcenniejsza rzecz
+          na pustyni, symbol życia, prawdy i tego do czego wszystko wraca).
+          Na pytania o Czarodziejkę reaguje wymijająco (wie że coś krąży,
+          ale nic nie zdradza za darmo — zgodnie z jego charakterem "nic za
+          darmo").
+    atmosphere: "cień palm, plusk wody, chwila spokoju pośród żaru"
+
+  ruiny_fortu:
+    name: "Ruiny Fortu"
+    image_variants:
+      - file: "ruiny_fortu"
+        base: true
+        condition: null
+        label: "Zrujnowany fort na pustyni"
+        prompt_extra: "zrujnowany, na wpół zasypany piaskiem stary fort, połamane mury, ślady dawnej bitwy, porzucony oręż, złowieszcza, opuszczona atmosfera"
+    description: |
+      Zrujnowane mury starego fortu sterczą z piasku jak połamane zęby.
+      Coś tu się wydarzyło dawno temu — i nie skończyło się dobrze.
+      Na wschodzie, między ruinami, słychać coś poruszającego się w piasku.
+    exits:
+      południe: oaza_beduinow
+      wschód: skorpion_z_fortu
+    items:
+      - id: ostrzalka
+        name: "magiczna ostrzałka"
+        hint: "coś błyszczącego wśród gruzu"
+        description: "Niewielki, gładki kamień, chłodny w dotyku mimo żaru pustyni. Wyczuwasz w nim drzemiącą magię."
+        takeable: true
+        hidden_when: {flag: wie_o_ostrzalce}
+      - id: zapasowy_miecz
+        name: "zardzewiały miecz"
+        hint: "stary miecz wbity w piasek między gruzami"
+        description: "Stary, zardzewiały miecz — ktoś go tu kiedyś zostawił, albo zgubił w pośpiechu."
+        takeable: true
+        hidden_when: {inventory: "zardzewiały miecz"}
+      - id: zapasowa_lopata
+        name: "łopata"
+        hint: "łopata oparta o połamany mur"
+        description: "Solidna, choć nadgryziona rdzą łopata. Nadal się nada do kopania."
+        takeable: true
+        hidden_when: {inventory: "łopata"}
+    npcs: []
+    atmosphere: "opuszczenie, wiatr świszczący między ruinami, ślady dawnej walki"
+
+  skorpion_z_fortu:
+    name: "Przejście przez Ruiny"
+    image_variants:
+      - file: "skorpion_pokonany"
+        condition: {flag: skorpion_pokonany, value: true}
+        label: "Martwy skorpion, przejście wolne"
+        prompt_extra: "skorpion leży nieruchomo na boku, martwy — ogon bezwładnie opuszczony, odnóża podkurczone, pancerz matowy bez połysku, reszta sceny bez zmian"
+      - file: "skorpion"
+        base: true
+        condition: null
+        label: "Olbrzymi skorpion blokuje przejście"
+        prompt_extra: "olbrzymi pustynny skorpion pośród ruin, uniesiony jadowity ogon, agresywna poza, piasek i gruz dookoła, napięta atmosfera"
+    description_variants:
+      - condition: {flag: skorpion_pokonany, value: true}
+        description: |
+          Wąskie przejście między zwałami gruzu. Martwy skorpion leży na
+          boku tam, gdzie go zostawiłeś. Droga na wschód stoi otworem.
+      - condition: null
+        description: |
+          Wąskie przejście między zwałami gruzu. Na drodze, z uniesionym
+          ogonem, stoi olbrzymi pustynny skorpion — najwyraźniej to jego
+          terytorium, i nie zamierza go oddać bez walki.
+    exits:
+      zachód:
+        target: ruiny_fortu
+        entry_only: true
+        entry_only_unless: {flag: skorpion_pokonany, value: true}
+      południe:
+        target: uschle_drzewo
+        entry_only: true
+        entry_only_unless: {flag: skorpion_pokonany, value: true}
+      wschód:
+        target: zasypana_studnia
+        requires: {flag: skorpion_pokonany, value: true}
+        blocked_message: "Skorpion zagradza drogę na wschód, ogon uniesiony do ataku."
+    items: []
+    npcs:
+      - id: skorpion
+        name: "Olbrzymi Skorpion"
+        description: |
+          Ogromny, pancerny skorpion pustynny. Zwierzę — nie rozmawia, nie
+          da się przekupić ani przekonać słowami. Reaguje tylko na realne
+          zagrożenie.
+        state: "blokuje"
+        unavailable_states:
+          pokonany: "Martwy skorpion leży na boku, przejście na wschód stoi otworem."
+        scripted_solutions:
+          - id: walka_zardzewialym
+            requires: {inventory: "zardzewiały miecz"}
+            action_hint: "gracz musi wyraźnie zaatakować/użyć zardzewiałego miecza na skorpionie"
+            trigger: "gracz atakuje skorpiona zardzewiałym mieczem"
+            outcome: |
+              Skorpion rzuca się do ataku, ale jesteś szybszy. Ostrze
+              trafia w słaby punkt między płytami pancerza. Zwierzę
+              zwija się i znieruchomiewa. Droga na wschód stoi otworem.
+            flags: {skorpion_pokonany: true, skorpion_state: pokonany}
+          - id: walka_mieczem_zbroja
+            requires: {inventory: "miecz i zbroja"}
+            action_hint: "gracz musi wyraźnie zaatakować/użyć miecza na skorpionie"
+            trigger: "gracz atakuje skorpiona swoim mieczem"
+            outcome: |
+              Osłonięty zbroją, wytrzymujesz jedno uderzenie ogona i
+              kontrujesz celnym cięciem w słaby punkt pancerza. Skorpion
+              zwija się i znieruchomiewa. Droga na wschód stoi otworem.
+            flags: {skorpion_pokonany: true, skorpion_state: pokonany}
+        no_match_messages:
+          - "Skorpion unosi ogon groźniej, ale nic więcej się nie dzieje."
+          - "Zwierzę nie reaguje na cokolwiek innego niż realny atak."
+        creative_solutions_hint: |
+          To zwykłe zwierzę — nie rozmawia, nie da się przekupić. Trzeba go
+          pokonać mieczem (zardzewiałym albo tym z ekwipunku wojownika).
+    atmosphere: "napięcie, gorący piasek, cień zagrożenia"
+
+  zasypana_studnia:
+    name: "Zasypana Studnia"
+    image_variants:
+      - file: "zasypana_studnia"
+        base: true
+        condition: null
+        label: "Studnia zasypana piaskiem"
+        prompt_extra: "stara kamienna studnia na wpół zasypana piaskiem pustyni, popękany kamienny obrys, ślady dawnej świetności, samotne miejsce"
+    description: |
+      Stara kamienna studnia, dawno zasypana piaskiem. Ktoś, kto miałby
+      czym kopać, mógłby jeszcze coś na jej dnie znaleźć.
+    exits:
+      zachód: skorpion_z_fortu
+    items: []
+    npcs:
+      - id: studnia
+        name: "Zasypana Studnia"
+        is_object: true
+        description: |
+          Kamienna studnia po brzegi wypełniona piaskiem. WAŻNE: odkopanie
+          wymaga łopaty — bez niej gracz nie da rady, piasek osypuje się
+          z powrotem gołymi rękami.
+        state: "zasypana"
+        scripted_solutions:
+          - id: kopanie
+            requires: {inventory: "łopata"}
+            action_hint: "gracz musi wyraźnie użyć łopaty do kopania/odkopywania studni"
+            trigger: "gracz kopie, odkopuje studnię łopatą"
+            outcome: |
+              Kopiesz uparcie, piasek osypuje się warstwa po warstwie.
+              W końcu łopata uderza o coś twardego — to stary, magiczny
+              bukłak, wciąż szczelny mimo lat pod piaskiem. Wewnątrz
+              pluska woda, choć bukłak wygląda na pusty w środku, jakby
+              nie miał dna.
+            flags: {studnia_wykopana: true}
+            inventory_add: ["magiczny bukłak niekończącej się wody"]
+          - id: bez_lopaty
+            requires: {inventory_missing: "łopata"}
+            action_hint: "gracz próbuje kopać gołymi rękami lub bez narzędzia"
+            trigger: "gracz próbuje odkopać studnię bez łopaty"
+            outcome: |
+              Próbujesz kopać gołymi rękami, ale piasek osypuje się z
+              powrotem szybciej niż zdążysz go odgarnąć. Potrzebujesz
+              czegoś do kopania.
+            flags: {}
+        no_match_messages:
+          - "Piasek w studni leży nieruszony."
+          - "Nic się nie dzieje — studnia dalej jest zasypana."
+        creative_solutions_hint: |
+          Studnię da się odkopać TYLKO łopatą. Bez niej żadna kreatywność
+          nie pomoże — piasek jest zbyt sypki.
+    atmosphere: "cisza, żar, samotność zapomnianego miejsca"
+
+  uschle_drzewo:
+    name: "Uschłe Drzewo"
+    image_variants:
+      - file: "uschle_drzewo_uratowane"
+        condition: {flag: drzewo_uratowane, value: true}
+        label: "Ożywione drzewo"
+        prompt_extra: "to samo drzewo, teraz pełne zielonych liści i magicznie świecącej kory, kontrast z suchym piaskiem dookoła, cudowna odnowa życia"
+      - file: "uschle_drzewo"
+        base: true
+        condition: null
+        label: "Uschłe, umierające drzewo"
+        prompt_extra: "samotne, suche, umierające drzewo pośrodku pustyni, gałęzie bez liści, spękana kora, smutna, melancholijna atmosfera"
+    description: |
+      Samotne, uschłe drzewo pośrodku piasku. Jego gałęzie są suche i
+      łamliwe, kora popękana z pragnienia. Mimo to czujesz w nim coś —
+      jakby wciąż tliła się w nim resztka życia, czekająca na ratunek.
+    exits:
+      zachód: oaza_beduinow
+      północ: skorpion_z_fortu
+    items: []
+    npcs:
+      - id: drzewo
+        name: "Uschłe Drzewo"
+        is_object: true
+        description: |
+          Umierające, magiczne drzewo. WAŻNE: ożywa TYLKO gdy gracz świadomie
+          da mu magiczny bukłak niekończącej się wody — samo posiadanie
+          bukłaka w ekwipunku nic nie zmienia, trzeba go wyraźnie oddać.
+        state: "usychające"
+        unavailable_states:
+          uratowane: "Drzewo stoi pełne życia, liście szumią choć nie ma wiatru. Jego kora świeci delikatnie magicznym blaskiem."
+        scripted_solutions:
+          - id: ratowanie
+            requires: {inventory: "magiczny bukłak niekończącej się wody"}
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie dać/wylać/podarować magiczny bukłak drzewu — samo posiadanie bukłaka nie wystarczy"
+            trigger: "gracz daje, wylewa lub ofiarowuje magiczny bukłak drzewu"
+            outcome: |
+              Wylewasz wodę z bukłaka na spękane korzenie. Woda płynie i
+              płynie, jakby bukłak nie miał dna — aż w końcu, opróżniony,
+              osuwa się między korzenie i znika, wchłonięty przez drzewo.
+              Drzewo drży, kora zaczyna pękać inaczej niż wcześniej —
+              pojawiają się pod nią żywe, zielone włókna. W ciągu chwil
+              drzewo odżywa całkowicie, pokrywa się liśćmi, a jego kora
+              zaczyna delikatnie świecić. Odłamujesz kawałek tej magicznej
+              kory, który drzewo jakby samo ci ofiarowuje.
+            flags: {drzewo_uratowane: true, drzewo_state: uratowane}
+            inventory_add: ["magiczna kora"]
+            inventory_remove: ["magiczny bukłak niekończącej się wody"]
+        no_match_messages:
+          - "Drzewo stoi nieruchomo, suche i milczące."
+          - "Nic się nie dzieje — drzewo dalej usycha."
+        creative_solutions_hint: |
+          Drzewo ożywa TYLKO gdy dostanie magiczny bukłak niekończącej się
+          wody (ze studni). Nic innego nie pomoże.
+    atmosphere: "melancholia, susza, cień nadziei"
+
+  undead_warriors:
+    name: "Cmentarzysko Wojowników"
+    image_variants:
+      - file: "undead_pokonani"
+        condition: {flag: undead_pokonani, value: true}
+        label: "Kości nieruchomo na piasku"
+        prompt_extra: "szkielety leżą nieruchomo, rozsypane na piasku, kości bezładnie porozrzucane, żadnego stojącego wojownika, reszta sceny bez zmian"
+      - file: "undead_warriors"
+        base: true
+        condition: null
+        label: "Nieumarli wojownicy blokują drogę"
+        prompt_extra: "pustynne cmentarzysko z wystającymi z piasku kośćmi i zbroją, grupa nieumarłych szkieletów-wojowników blokujących przejście, złowieszcze, mroczne, magiczne pustynne słońce"
+    description_variants:
+      - condition: {flag: undead_pokonani, value: true}
+        description: |
+          Piasek tu jest usiany kośćmi i szczątkami starej zbroi — teraz
+          już tylko martwym żelastwem. Cokolwiek ożywiało te szkielety,
+          zniknęło bez śladu. Droga na północ stoi otworem.
+      - condition: null
+        description: |
+          Piasek tu jest usiany kośćmi i szczątkami starej zbroi. Z ziemi
+          powoli podnoszą się nieumarli wojownicy — szkielety w zbutwiałych
+          pancerzach, strzegące przejścia na północ od niepamiętnych czasów.
+    exits:
+      wschód: oaza_beduinow
+      północ:
+        target: wrak_karawany
+        requires: {flag: undead_pokonani, value: true}
+        blocked_message: "Nieumarli wojownicy zagradzają drogę na północ, kościane dłonie zaciśnięte na rdzewiejącej broni."
+    items: []
+    npcs:
+      - id: undead_warriors
+        name: "Nieumarli Wojownicy"
+        description: |
+          Grupa szkieletów-wojowników, ożywionych jakimś starym przekleństwem.
+          Nie rozmawiają, nie dają się przekupić — to nieumarli, obce
+          zwykłej magii i słowom. Boją się tylko jednej rzeczy: prawdziwego
+          życia.
+        state: "blokują"
+        unavailable_states:
+          pokonani: "Kości leżą nieruchomo na piasku — cokolwiek je ożywiało, zniknęło. Droga na północ stoi otworem."
+        scripted_solutions:
+          - id: magiczna_kora
+            requires: {inventory: "magiczna kora"}
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie użyć/pokazać/rzucić magiczną korę na nieumarłych — samo posiadanie kory nie wystarczy"
+            trigger: "gracz używa, rzuca lub pokazuje magiczną korę nieumarłym wojownikom"
+            outcome: |
+              Magiczna kora w twojej dłoni rozjaśnia się, promieniując
+              czymś, czego te kości nie potrafią znieść — czystym, żywym
+              życiem pustyni. Szkielety cofają się z bezgłośnym jękiem,
+              rozpadając się jeden po drugim, aż zapada cisza. Kości
+              opadają nieruchomo na piasek.
+            flags: {undead_pokonani: true}
+            inventory_remove: ["magiczna kora"]
+        no_match_messages:
+          - "Szkielety robią krok naprzód, grożąc bronią, ale nic więcej się nie dzieje."
+          - "Nieumarli nie reagują na nic poza tym, czego naprawdę się boją."
+        creative_solutions_hint: |
+          Nieumarłych da się pokonać TYLKO magiczną korą z ożywionego
+          drzewa — nic innego (walka, słowa, przedmioty) nie działa.
+    atmosphere: "złowieszcza cisza, szczęk starych kości, chłód mimo słońca"
+
+  wrak_karawany:
+    name: "Wrak Karawany"
+    image_variants:
+      - file: "wrak_karawany"
+        base: true
+        condition: null
+        label: "Szczątki dawnej karawany"
+        prompt_extra: "szczątki starej karawany na pustyni, połamane wozy, kości wielbłądów wystające z piasku, porzucone bagaże, ślady dawnej tragedii, złociste światło zachodzącego słońca"
+    description: |
+      Połamane wozy i kości wielbłądów wystają z piasku — szczątki
+      karawany, która nigdy nie dotarła do celu. Wśród porzuconych
+      bagaży wciąż można coś znaleźć.
+    exits:
+      południe: undead_warriors
+    items:
+      - id: kompas
+        name: "kompas"
+        hint: "coś metalowego błyszczącego wśród szczątków"
+        description: "Stary mosiężny kompas. Jego igła nie wskazuje północy — kręci się niespokojnie, jakby wyczuwała coś w burzy piaskowej."
+        takeable: true
+    npcs: []
+    atmosphere: "cisza po tragedii, wiatr poruszający porzuconym płótnem"
 
   # ===== POZIOM 1: MIASTO =====
 
@@ -1083,9 +2870,11 @@ locations:
     exits:
       wyjście:
         target: karczma
-        requires: {flag: drzwi_pokoj_otwarte, value: true}
+        aliases: ["południe"]
+        requires: {flag: drzwi_pokoj_state, value: otwarte, inventory_all: ["miecz i zbroja", "mieszek ze złotem"]}
         hidden: false
         blocked_message: "Drzwi są zamknięte na klucz. Musisz je najpierw otworzyć."
+        blocked_message_items: "Nie zostawię tu mojej zbroi i pieniędzy bez opieki — tylko gdzie ja to położyłem? Nie mam pojęcia, muszę poszukać."
     items:
       - id: klucz_pokoj
         name: "klucz do pokoju"
@@ -1099,22 +2888,10 @@ locations:
         takeable: false
         examine_sets_flag: {szafa_otwarta: true}
         set_on: examine
-      - id: miecz_bojowy
-        name: "miecz bojowy"
-        hint: "miecz w szafie"
-        description: "Solidny miecz bojowy, dobrze wyważony. Twój stary towarzysz."
-        takeable: true
-        hidden_when: {flag: szafa_otwarta, value: null}
-      - id: tarcza
-        name: "tarcza"
-        hint: "okrągła tarcza w szafie"
-        description: "Okrągła drewniana tarcza z żelaznym umbonem. Nieraz uratowała ci życie."
-        takeable: true
-        hidden_when: {flag: szafa_otwarta, value: null}
-      - id: kolczuga
-        name: "kolczuga"
-        hint: "kolczuga w szafie"
-        description: "Twoja kolczuga — dobra ochrona, trochę ciężka, ale niezawodna."
+      - id: miecz_i_zbroja
+        name: "miecz i zbroja"
+        hint: "twoja broń i zbroja w szafie"
+        description: "Twój stary komplet uzbrojenia z ostatniej wyprawy — dobrze wyważony, niezawodny."
         takeable: true
         hidden_when: {flag: szafa_otwarta, value: null}
       - id: mieszek_m
@@ -1126,6 +2903,8 @@ locations:
     npcs:
       - id: drzwi_pokoj
         name: "zamknięte drzwi"
+        is_object: true
+        no_match_message: "Szarpiesz za klamkę, ale drzwi są solidnie zamknięte na klucz. Musisz wyraźnie użyć klucza, żeby je otworzyć."
         description: |
           Solidne drewniane drzwi z żelaznym zamkiem. Otwierają się kluczem.
           Nie próbuj ich wyważać — karczmarz ma cię na oku.
@@ -1138,11 +2917,12 @@ locations:
           - id: otworz_kluczem
             requires: {inventory: "klucz do pokoju"}
             allow_talk: true
+            action_hint: "gracz musi wyraźnie wspomnieć użycie klucza ('kluczem', 'wkładam klucz do zamka', 'przekręcam klucz') — samo 'otwieram drzwi' albo 'otwieram zamek' bez wspomnienia klucza NIE wystarczy, nawet jeśli klucz jest w ekwipunku"
             trigger: "gracz używa klucza na drzwiach lub otwiera drzwi kluczem"
             outcome: |
               Wkładasz klucz do zamka i przekręcasz. Drzwi otwierają się z cichym skrzypnięciem.
               Możesz wyjść.
-            flags: {drzwi_pokoj_otwarte: true}
+            flags: {drzwi_pokoj_state: otwarte}
     atmosphere: "duszny poranek, smród taniego piwa i słomy, głowa boli po wczorajszym"
 
   karczma:
@@ -1155,10 +2935,11 @@ locations:
     description: |
       Na dole karczmy gwar porannych gości. Za długą ladą stoi karczmarz Bolesław —
       gruby, rumiany, wyciera kufle ścierką. Przy stolikach kilku woźniców i kupców.
-      Na południe wyjście na ulicę.
+      Na południe wyjście na ulicę, na wschód boczna uliczka prowadzi w stronę bramy miejskiej.
     exits:
       wejście: pokoj_karczmy
       południe: ulica
+      wschód: brama_miasta
     items: []
     npcs:
       - id: karczmarz
@@ -1173,16 +2954,19 @@ locations:
         scripted_solutions:
           - id: historia_karczma
             allow_talk: true
+            auto_reveal: true
             trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, albo o królową"
             outcome: |
-              O karawanie: przejeżdżali tydzień temu, nocą, bez zatrzymania — nikt nie wiedział co wiozą.
-              O Królowej (podaje to W ZAUFANIU, nie jako odpowiedź na pytanie — chyba że gracz zapytał wprost):
-              jej ojciec był okrutny, dworska szlachta się z niej śmiała, wykuła z tego serce zimne jak stal.
+              O karawanie: przejeżdżali zeszłej nocy, bez zatrzymania — nikt nie wiedział co wiozą.
+              Potem, w zaufaniu, dodaje jeszcze o Królowej: jej ojciec był okrutny, dworska szlachta
+              się z niej śmiała, wykuła z tego serce zimne jak stal.
               Mówi krótko i wraca do roboty. Więcej nie powie.
             flags: {pytanie_karczma: true}
         creative_solutions_hint: |
           Karczmarz wie dużo ale mówi mało. Można go przekupić, zastraszać nie ma sensu.
           Jeśli gracz zapyta wprost i szczerze — powie co wie.
+    crowd: true
+    crowd_reaction_hint: "poranni goście karczmy — woźnice i kupcy zajęci własnym śniadaniem, nie zwracają na obcego uwagi"
     atmosphere: "gwar, smród piwa i dymu, ciepło po nocnym mrozie"
 
   ulica:
@@ -1202,6 +2986,7 @@ locations:
       południe: targowisko
     items: []
     npcs: []
+    crowd: true
     atmosphere: "ruch poranny, bruk mokry od nocnego deszczu, zapach piekarni gdzieś w pobliżu"
 
   ratusz:
@@ -1232,10 +3017,11 @@ locations:
         scripted_solutions:
           - id: historia_ratusz
             allow_talk: true
+            auto_reveal: true
             trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, o królową lub o sprawy królewskie"
             outcome: |
               O karawanie: zaprzecza że cokolwiek wie, to sprawy królewskie poza jego kompetencją.
-              O Królowej (mówi to MIMO WOLI, jakby sam siebie zaskoczył — chyba że gracz zapytał wprost):
+              Potem, mimo woli, jakby sam siebie zaskoczył, dodaje jeszcze o Królowej:
               dziesięć lat temu najeźdźcy z północy, wojska klęskły, stary król uciekł —
               miała dwadzieścia lat, zebrała resztki wojska, odparła najazd sama,
               lud dał jej koronę. Wraca do dokumentów, zamyka temat.
@@ -1273,11 +3059,12 @@ locations:
         scripted_solutions:
           - id: historia_targowisko
             allow_talk: true
+            auto_reveal: true
             trigger: "gracz pyta o karawanę królewską, o zaginiony żołd lub o królową"
             outcome: |
               O karawanie: jeżdżą nocami, coś wiozą czego nie chcą pokazywać — tyle wie.
-              O Królowej (rzuca to Z WŁASNEJ INICJATYWY, nagle, jakby długo chciała to powiedzieć
-              — chyba że gracz zapytał wprost): trzy lata po tym jak uratowała kraj,
+              Potem, z własnej inicjatywy, nagle, jakby długo chciała to powiedzieć, dodaje jeszcze
+              o Królowej: trzy lata po tym jak uratowała kraj,
               chłopi się zbuntowali — podatki, głód. Rozbiła ich doszczętnie,
               powiedziała że czarną niewdzięcznością się odwdzięczyli.
               Urywa, cofa się — mówi że ma dzieci i więcej nie pyta.
@@ -1285,6 +3072,8 @@ locations:
         creative_solutions_hint: |
           Jadwiga boi się ale jest gadatliwa. Można ją zachęcić drobnym zakupem
           lub po prostu słuchając uważnie. Zastraszanie zamknie jej usta.
+    crowd: true
+    crowd_reaction_hint: "gwarny tłum kupców i klientów, nikt nie ma czasu na obcego"
     atmosphere: "hałas, tłum, woń targowiska, szara codzienna bieda"
 
   brama_miasta:
@@ -1297,9 +3086,10 @@ locations:
     description: |
       Masywna kamienna brama z opuszczoną kratą. Dwóch strażników w zbrojach
       z herbem królowej pilnuje wejścia. Patrzą na ciebie bez wyrazu.
-      Na południe ratusz i miasto.
+      Na południe ratusz i miasto, na zachód boczna uliczka prowadzi do karczmy.
     exits:
       południe: ratusz
+      zachód: karczma
     items: []
     npcs:
       - id: straznik_bramy
@@ -1316,12 +3106,13 @@ locations:
         scripted_solutions:
           - id: historia_brama
             allow_talk: true
+            auto_reveal: true
             trigger: "gracz pyta o karawanę królewską, o zaginiony żołd, o królową lub o wyjazd z miasta"
             outcome: |
               O karawanie i wyjściu z miasta: odpowiada twardo, to tajne sprawy królewskie —
               za dużo ludzi pyta o nie swoje sprawy i znikają.
-              O Królowej (mówi to JAKBY DO SIEBIE, odwrócony — chyba że gracz zapytał wprost):
-              podatki co rok wyższe, wioski które nie płacą zostają puste ściany,
+              Potem, jakby do siebie, odwrócony, dodaje jeszcze o Królowej: podatki co rok wyższe,
+              wioski które nie płacą zostają puste ściany,
               kto coś powie... urywa. Odsyła gracza, kończy rozmowę.
             flags: {pytanie_brama: true}
         creative_solutions_hint: |
