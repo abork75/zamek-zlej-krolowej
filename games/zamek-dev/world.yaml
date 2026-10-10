@@ -47,6 +47,39 @@ start_locations:
       - "zardzewiały miecz"
       - "miecz i zbroja"
       - "mieszek ze złotem"
+  - id: czarodziejka
+    label: "pustynia_kocica"
+    description: "Test kuchni, biblioteki i kocicy — start u czarodziejki, przed naostrzeniem miecza"
+    initial_flags:
+      straznik_przepuscil: true
+      burza_pokonana: true
+    initial_inventory:
+      - "zardzewiały miecz"
+      - "miecz i zbroja"
+      - "mieszek ze złotem"
+  - id: jaskinie_gorne
+    label: "final_jaskinie"
+    description: "Test finału — galeria nad salą rytuału, golem, grymuar, powrót słowem Krystyna"
+    initial_flags:
+      miecz_naostrzony: true
+      kamien_dany: true
+    initial_inventory:
+      - "magiczny miecz"
+      - "kamień teleportacji"
+      - "miecz i zbroja"
+      - "mieszek ze złotem"
+
+intro_czarodziejka: |
+  Masz przy sobie zardzewiały miecz, miecz ze zbroją i mieszek złota. Jesteś
+  w komnacie czarodziejki. Na wschodzie kuźnia kowala, na zachodzie kuchnia,
+  na północy biblioteka.
+  Co robisz?
+
+intro_jaskinie_gorne: |
+  Masz przy sobie magiczny miecz, kamień teleportacji, miecz ze zbroją i
+  mieszek złota. Stoisz na skalnej galerii nad salą rytuału. Królowa już
+  odeszła, a w dole, na pulpicie pod okiem golema, leży grymuar.
+  Co robisz?
 
 intro_dziedziniec_zamku: |
   Stoisz na dziedzińcu zamku Królowej. Strażnik już nie blokuje drogi — udało ci się
@@ -119,6 +152,18 @@ mechanics:
 # requires/inventory_all itd.), ale nie są pokazywane na ekranie dopóki warunek nie jest
 # spełniony — np. "historia X" pojawia się w logice gry od razu po usłyszeniu opowieści,
 # ale wizualnie ujawnia się dopiero gdy gracz ma księgę run (ona "zapisuje" to co już wie).
+# Przedmioty z ekwipunku, które gracz może przeczytać — deterministyczny tekst (bez narratora).
+# match: słowa-klucze w wypowiedzi gracza (domyślnie nazwa przedmiotu);
+# sequence_from: lokacja z move_sequence, z której podstawiamy {sekwencja} (jedno źródło prawdy).
+readable_items:
+  "pergamin z instrukcją":
+    match: ["pergamin", "zwój"]
+    sequence_from: burzowe_piaski
+    text: |
+      Rozwijasz pergamin. Na pożółkłej skórze, pismem starym jak same
+      wydmy, wykaligrafowano drogę przez burzę piaskową: {sekwencja}.
+      Pod spodem krótki dopisek: "Ani kroku inaczej."
+
 hidden_items:
   "historia centaura": {inventory: "księga run"}
   "historia driady": {inventory: "księga run"}
@@ -179,7 +224,9 @@ events:
       i podaje ci stary pergamin. "Trzymaj, na co zasłużyłeś. Burza
       piaskowa słucha tylko jednej drogi: północ, południe, północ,
       zachód, wschód. Ani kroku inaczej — czas na pustyni nie wybacza
-      pomyłek."
+      pomyłek." Zawiesza głos. "Sama droga to za mało. Potrzebny jest
+      jeszcze kompas, który miał do mnie dotrzeć — ale nigdy nie dotarł
+      i słuch o nim zaginął gdzieś na pustyni."
     inventory_add: ["pergamin z instrukcją"]
   - id: kowal_naostrzy
     condition:
@@ -194,6 +241,9 @@ events:
       Ten miecz jest magiczny. Ktoś to dawno temu ukrył pod rdzą,
       specjalnie." Oddaje naostrzony, lśniący miecz. "Teraz jest
       gotowy na to, co przed tobą."
+
+      (Magiczna ostrzałka została zużyta. Zardzewiały miecz zastępuje
+      teraz magiczny miecz.)
     flags: {miecz_naostrzony: true}
     inventory_remove: ["magiczna ostrzałka", "zardzewiały miecz"]
     inventory_add: ["magiczny miecz"]
@@ -205,10 +255,51 @@ events:
     trigger_locations: [kowal]
     narrative: |
       Kowal bierze miecz do ręki, ogląda go, kręci głową.
-      "Zwykłym kamieniem tego nie naostrzę — ten miecz potrzebuje
-      magicznej ostrzałki. Znajdziesz taką w starych ruinach fortu,
-      o ile jeszcze tam jest." Oddaje ci miecz z powrotem.
+      "Takim kamieniem tego nie naostrzę — ten miecz potrzebuje
+      magicznej ostrzałki. A moja gdzieś mi się zapodziała, szukam
+      jej od dawna." Oddaje ci miecz z powrotem.
     flags: {wie_o_ostrzalce: true}
+  - id: czarodziejka_kamien
+    condition:
+      flag: miecz_naostrzony
+      value: true
+      inventory: "magiczny miecz"
+      flags_any_false: {kamien_dany: true}
+    trigger_locations: [czarodziejka]
+    narrative: |
+      Czarodziejka długo patrzy na lśniący miecz, a potem na ciebie.
+      "Więc to prawda. Ostrze przetrwało." Wyciąga z rękawa gładki,
+      ciemny kamień i wkłada ci go w dłoń. "Słuchaj uważnie, bo drugiej
+      szansy nie będzie. Królowa zamierza rzucić czar, który zniewoli
+      wszystkich w tej krainie — żeby byli jej posłuszni i nigdy więcej
+      się nie zbuntowali. Przejrzałam ten plan i musiałam uciekać, zanim
+      wpadnę w jej ręce. Dopóki czar nie zostanie rzucony, jedyne
+      wyjście to ją powstrzymać — także mieczem. Ale jeśli zdąży go
+      dopełnić, nie wolno ci jej zabić: nie wiem, co stałoby się
+      z zaczarowanymi, gdyby to nią zachwiało, a ty nie wiesz tego
+      lepiej ode mnie. Wtedy liczy się tylko grymuar z tym zaklęciem,
+      który leży w jej podziemiach — nigdy nie miałam go w rękach.
+      Bez niego nie dowiem się, jak to cofnąć." Zawiesza głos. "Ty jesteś spoza tej krainy. Czar na ciebie
+      zapewne nie zadziała — dlatego to ty musisz tam pójść. Kamień zabierze
+      cię tam i sprowadzi z powrotem. Gdy będziesz miał księgę, wykrzycz
+      imię mojej kocicy: Krystyna." Kamień rozjarza się w twojej dłoni
+      i świat wiruje, zasnuwając się mrokiem.
+
+      (Otrzymujesz kamień teleportacji.)
+
+      Lądujesz na wąskiej skalnej galerii nad ogromną jaskinią. W dole,
+      w kręgu czerwonych pochodni, stoi Królowa. W dłoni ściska magiczną
+      różdżkę — a raczej kij długości człowieka, zakończony niebieską
+      kulą — a drugą rękę unosi nad otwartą księgą; jej głos niesie się
+      echem po skałach. Powietrze gęstnieje, po ścianach przebiega
+      pulsujące światło. Zbyt późno — czar właśnie się dopełnia. Królowa
+      opuszcza rękę, rzuca spojrzenie na swoje dzieło i odchodzi
+      w otoczeniu świty, a jej kroki cichną w korytarzu.
+      Księga zostaje na kamiennym pulpicie, pod okiem strażnika.
+    flags: {kamien_dany: true}
+    inventory_add: ["kamień teleportacji"]
+    target_location: jaskinie_gorne
+    show_target_description: true
 
 locations:
   las:
@@ -1063,7 +1154,7 @@ locations:
       Duża komnata zastawiona skrzyniami i beczkami. Jedwabie, dywany, cenne wazy —
       luksusowe dobra, najwyraźniej dopiero przywiezione. Pod ścianą rząd beczek.
       Jedna jest prawie pusta — na dnie ciemna, lepka substancja o ostrym zapachu.
-      Przy wejściu leżą narzędzia: łom, kilof, łopata.
+      Przy wejściu leżą narzędzia: łom i kilof.
     exits:
       południe: korytarz
     items:
@@ -2398,19 +2489,154 @@ locations:
         condition: null
         label: "Czarodziejka, której imienia nikt nie zna"
         prompt_extra: "podziemna komnata oświetlona magicznym błękitnym światłem, tajemnicza kobieta w szacie utkanej z piasku i gwiazd, otoczona unoszącymi się run ami, mistyczna, spokojna atmosfera"
-    description: |
-      Komnata wykuta w litej skale, oświetlona miękkim, błękitnym światłem
-      bez wyraźnego źródła. Pośrodku stoi kobieta, której twarzy nie
-      sposób zapamiętać, choć patrzysz na nią wprost. "Czekałam na
-      kogoś takiego jak ty" — mówi cicho. Jej wzrok pada na twój
-      zardzewiały miecz. "Ale ten miecz jeszcze nie jest gotowy. Idź na
-      wschód — tam znajdziesz kowala."
+    description_variants:
+      - condition: {flag: miecz_naostrzony, value: true}
+        description: |
+          Komnata wykuta w litej skale, oświetlona miękkim, błękitnym światłem
+          bez wyraźnego źródła. Kobieta, której twarzy nie sposób zapamiętać,
+          wpatruje się w lśniący miecz u twojego pasa.
+      - condition: null
+        description: |
+          Komnata wykuta w litej skale, oświetlona miękkim, błękitnym światłem
+          bez wyraźnego źródła. Pośrodku stoi kobieta, której twarzy nie
+          sposób zapamiętać, choć patrzysz na nią wprost. "Czekałam na
+          kogoś takiego jak ty" — mówi cicho. Jej wzrok pada na twój
+          zardzewiały miecz. "Ale ten miecz jeszcze nie jest gotowy. Idź na
+          wschód — tam znajdziesz kowala."
     exits:
       południe: straznik_duch_wladcy
       wschód: kowal
+      zachód: kuchnia
+      północ: biblioteka
     items: []
     npcs: []
     atmosphere: "błękitna poświata, spokój, ciężar czekającej historii"
+
+  kuchnia:
+    name: "Kuchnia Czarodziejki"
+    image_variants:
+      - file: "kuchnia"
+        base: true
+        condition: null
+        label: "Kuchnia czarodziejki"
+        prompt_extra: "przytulna podziemna kuchnia wykuta w skale, wielki kamienny kominek z kociołkiem, wiszące zioła i suszone ryby, drewniany stół, sympatyczna otyła kucharka, ciepłe światło, magiczne błękitne akcenty"
+    description: |
+      Przytulna kuchnia wykuta w skale. Na kominku bulgocze kociołek,
+      pod sufitem suszą się zioła, a przy stole uwija się tęga kucharka.
+      Na desce leży przygotowana ryba — wyraźnie z myślą o kimś
+      wybrednym. Kucharka mruczy pod nosem: "Krystyna znowu nie będzie
+      chciała jeść niczego innego..."
+    exits:
+      wschód: czarodziejka
+    items: []
+    npcs:
+      - id: kucharka
+        name: "Kucharka Czarodziejki"
+        description: |
+          Tęga, gadatliwa kucharka, która od lat służy czarodziejce. Ma
+          słabość do swojej wybrednej pupilki, Grubej Kocicy Krystyny —
+          ulubionej kocicy czarodziejki. Przygotowała dla niej rybę i chętnie
+          odda ją każdemu, kto prosi, bo sama ma dosyć noszenia misek po
+          całym pałacu. Narzeka, plotkuje, bywa czuła. Na pytania o kocicę
+          odpowiada chętnie.
+        state: "gotuje"
+        scripted_solutions:
+          - id: ryba_dla_krystyny
+            requires: {flag: kucharka_dala_rybe}
+            allow_talk: true
+            action_hint: "gracz musi poprosić o rybę/jedzenie/coś dla Krystyny, albo próbować rybę wziąć z deski, albo zapytać czy może ją wziąć/zanieść, albo powiedzieć że nakarmi Krystynę lub zaniesie jej rybę — samo powitanie czy pytanie o coś zupełnie innego nie wystarczy"
+            trigger: "gracz prosi kucharkę o rybę, jedzenie lub coś dla kocicy Krystyny, albo pyta czym można zająć kota; ALBO bierze/zabiera/chwyta rybę z deski (np. 'weź rybę', 'biorę rybę'); ALBO pyta czy może ją wziąć/zanieść; ALBO oświadcza że zaniesie rybę lub nakarmi Krystynę"
+            outcome: |
+              Kucharka ociera ręce o fartuch i uśmiecha się z ulgą. "Krystyna?
+              Oczywiście, weź, weź tę rybę — i tak ona woli ją od każdej
+              innej. Tylko nie daj jej się wystraszyć, to bardzo wrażliwa
+              dama." Wciska ci w dłonie zawiniętą w płótno rybę.
+
+              (Otrzymujesz rybę dla Krystyny.)
+            flags: {kucharka_dala_rybe: true}
+            inventory_add: ["ryba dla Krystyny"]
+          - id: juz_dala_rybe
+            requires: {flag: kucharka_dala_rybe, value: true}
+            allow_talk: true
+            trigger: "gracz prosi kucharkę o rybę, jedzenie lub coś dla kocicy Krystyny, albo pyta czym można zająć kota; ALBO bierze/zabiera/chwyta rybę z deski (np. 'weź rybę', 'biorę rybę'); ALBO pyta czy może ją wziąć/zanieść; ALBO oświadcza że zaniesie rybę lub nakarmi Krystynę"
+            outcome: |
+              Kucharka macha chochlą. "Przecież już dostałeś rybę dla
+              Krystyny! Idź do biblioteki, bo jeszcze się obrazi."
+            flags: {}
+        creative_solutions_hint: |
+          Kucharka jest gadatliwa i życzliwa, mówi o kocicy Krystynie z czułością
+          i irytacją naraz. Ryby dla Krystyny NIE oddawaj w swobodnej rozmowie —
+          gracz dostaje ją tylko przez scenariusz (prośba o rybę/jedzenie dla
+          kocicy). W swobodnej rozmowie możesz plotkować o czarodziejce, kocicy,
+          kuchni — bez przekazywania przedmiotów.
+    atmosphere: "ciepło kominka, zapach ziół i ryby, domowy gwar"
+
+  biblioteka:
+    name: "Biblioteka Czarodziejki"
+    image_variants:
+      - file: "biblioteka_zajeta"
+        condition: {flag: kocica_zajeta, value: true}
+        label: "Kocica je rybę, kamień leży porzucony"
+        prompt_extra: "gruba kocica zajada rybę z miski, błyszczący gładki kamień leży porzucony na dywanie obok niej, reszta sceny bez zmian"
+      - file: "biblioteka"
+        base: true
+        condition: null
+        label: "Biblioteka z grubą kocicą"
+        prompt_extra: "wysoka podziemna biblioteka z regałami pełnymi ksiąg, błękitne magiczne światło, pośrodku na puszystym dywanie gruba, rozlazła kocica bawiąca się łapami błyszczącym gładkim kamieniem"
+    description_variants:
+      - condition: {flag: kocica_zajeta, value: true}
+        description: |
+          Wysoka biblioteka tonie w błękitnym świetle. Gruba Kocica Krystyna
+          zajada rybę z miseczki, mrucząc tak głośno, że drżą grzbiety ksiąg.
+          Błyszczący kamień, którym przed chwilą się bawiła, leży porzucony
+          na dywanie.
+      - condition: null
+        description: |
+          Wysoka biblioteka tonie w błękitnym świetle. Regały sięgają
+          sufitu. Pośrodku, na puszystym dywanie, rozwalona jest gruba
+          kocica — Krystyna — i z uporem toczy łapą jakiś błyszczący kamień.
+          Nie zwraca na ciebie uwagi.
+    exits:
+      południe: czarodziejka
+    items:
+      - id: ostrzalka
+        name: "magiczna ostrzałka"
+        hint: "błyszczący kamień porzucony przez kocicę na dywanie"
+        description: "Niewielki, gładki kamień, chłodny w dotyku. Wyczuwasz w nim drzemiącą magię."
+        takeable: true
+        hidden_when: {flag: kocica_zajeta}
+    npcs:
+      - id: kocica_krystyna
+        name: "Gruba Kocica Krystyna"
+        description: |
+          Gruba, rozlazła, wybredna kocica — ulubienica czarodziejki. Bawi się
+          błyszczącym kamieniem i nie odda go dobrowolnie; gdy jednak dostanie
+          coś pysznego, zapomina o całym świecie. To kot — nie mówi, tylko
+          mruczy, prycha, ziewa i patrzy z góry.
+        state: "bawi_sie"
+        unavailable_states:
+          zajeta: "Krystyna zajada rybę, mrucząc tak głośno, że drżą półki. Ciebie nie widzi ani trochę."
+        scripted_solutions:
+          - id: nakarmienie_krystyny
+            requires: {inventory: "ryba dla Krystyny"}
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie dać/podsunąć/położyć kocicy rybę dla Krystyny lub jedzenie — samo posiadanie ryby nie wystarczy"
+            trigger: "gracz daje, podsuwa lub kładzie przed kocicą rybę albo jedzenie"
+            outcome: |
+              Odwijasz rybę z płótna. Krystyna unosi łeb, nos jej drga.
+              W jednej chwili kamień przestaje istnieć — kocica turla się
+              w stronę ryby z dostojeństwem okrętu wojennego i zaczyna
+              ją pałaszować. Błyszczący kamień zostaje porzucony na dywanie.
+            flags: {kocica_zajeta: true, kocica_state: zajeta}
+            inventory_remove: ["ryba dla Krystyny"]
+        no_match_messages:
+          - "Krystyna ledwie zerka na ciebie jednym okiem i wraca do swojego kamienia."
+          - "Kocica prycha i odwraca się plecami, pochłonięta zabawą."
+        creative_solutions_hint: |
+          To kot: nie rozmawia, nie reaguje na słowa ani groźby. Kamień zabierze
+          się tylko, gdy kocica zajmie się czymś lepszym — jedzeniem (ryba dla
+          Krystyny od kucharki). Siłą ani sprytem nic nie wskórasz.
+    atmosphere: "błękitne światło, cisza, mruczenie"
 
   kowal:
     name: "Kuźnia Podziemi"
@@ -2420,10 +2646,17 @@ locations:
         condition: null
         label: "Krasnoludzki kowal przy kuźni"
         prompt_extra: "podziemna kuźnia, żarzący się piec, krasnoludzki kowal przy kowadle, iskry, narzędzia kowalskie na ścianach, ciepłe pomarańczowe światło kontrastujące z chłodem podziemi"
-    description: |
-      Ciepło bijące od pieca kontrastuje z chłodem reszty podziemi. Przy
-      kowadle stoi krasnoludzki kowal, pochłonięty pracą. Podnosi wzrok
-      na twój widok. "Rzadko tu kto zachodzi. Pokaż no ten miecz."
+    description_variants:
+      - condition: {flag: miecz_naostrzony, value: true}
+        description: |
+          Ciepło bijące od pieca kontrastuje z chłodem reszty podziemi. Kowal
+          skinął głową znad kowadła. "Miecz już gotowy. Czarodziejka na
+          ciebie czeka." Wraca do swojej pracy.
+      - condition: null
+        description: |
+          Ciepło bijące od pieca kontrastuje z chłodem reszty podziemi. Przy
+          kowadle stoi krasnoludzki kowal, pochłonięty pracą. Podnosi wzrok
+          na twój widok. "Rzadko tu kto zachodzi. Pokaż no ten miecz."
     exits:
       zachód: czarodziejka
     items: []
@@ -2450,25 +2683,45 @@ locations:
               Ten miecz jest magiczny. Ktoś to dawno temu ukrył pod rdzą,
               specjalnie." Oddaje naostrzony, lśniący miecz. "Teraz jest
               gotowy na to, co przed tobą."
+
+              (Magiczna ostrzałka została zużyta. Zardzewiały miecz
+              zastępuje teraz magiczny miecz.)
             flags: {miecz_naostrzony: true}
             inventory_remove: ["magiczna ostrzałka", "zardzewiały miecz"]
             inventory_add: ["magiczny miecz"]
           - id: brak_ostrzalki
-            requires: {inventory_missing: "magiczna ostrzałka"}
+            requires: {inventory_missing: "magiczna ostrzałka", flag: miecz_naostrzony}
             allow_talk: true
             trigger: "gracz daje, pokazuje, wręcza kowalowi zardzewiały miecz, prosi o jego naostrzenie, albo pyta co z nim zrobić"
             action_hint: "gracz musi wyraźnie zaangażować kowala w sprawę miecza — dać/pokazać/wręczyć miecz, poprosić o naostrzenie, albo zapytać co z nim zrobić"
             outcome: |
-              Kowal kręci głową. "Zwykłym kamieniem tego nie naostrzę —
-              ten miecz potrzebuje magicznej ostrzałki. Znajdziesz taką
-              w starych ruinach fortu, o ile jeszcze tam jest."
+              Kowal kręci głową. "Takim kamieniem tego nie naostrzę — ten
+              miecz potrzebuje magicznej ostrzałki. A moja gdzieś mi się
+              zapodziała, szukam jej od dawna."
             flags: {wie_o_ostrzalce: true}
+          - id: po_naostrzeniu
+            requires: {flag: miecz_naostrzony, value: true}
+            allow_talk: true
+            trigger: "gracz coś daje kowalowi, pokazuje mu miecz, prosi o naostrzenie albo pyta co dalej"
+            action_hint: "gracz zagaduje kowala, daje mu coś lub pyta o miecz po tym, jak miecz został już naostrzony"
+            outcome: |
+              Kowal ledwo unosi wzrok. "Miecz jest gotowy, nie ma już
+              czego ostrzyć. Idź do czarodziejki, czeka na ciebie."
+            flags: {}
+        no_match_variants:
+          - condition: {flag: miecz_naostrzony, value: true}
+            messages:
+              - "Kowal ledwo unosi wzrok znad kowadła. \"Miecz jest gotowy. Idź do czarodziejki, czeka na ciebie.\""
+              - "Kowal macha ręką w stronę komnaty na zachodzie. \"Tu już nic nie zrobisz. Idź do czarodziejki.\""
         no_match_messages:
           - "Kowal wraca do swojej pracy, nie zwracając na ciebie uwagi."
           - "Kowal tylko mruczy coś pod nosem i stuka młotkiem."
         creative_solutions_hint: |
           Kowal naostrzy zardzewiały miecz TYLKO gdy gracz ma magiczną
-          ostrzałkę. Bez niej odsyła do ruin fortu.
+          ostrzałkę. Bez niej mówi jedynie, że ostrzałka gdzieś mu się
+          zapodziała — NIE wskazuj, gdzie jej szukać. Gdy miecz jest już
+          naostrzony (magiczny miecz w ekwipunku), nie ma czego ostrzyć —
+          odeślij gracza do czarodziejki.
     atmosphere: "żar pieca, iskry, stukot młotka"
 
   oaza_beduinow:
@@ -2559,24 +2812,17 @@ locations:
       południe: oaza_beduinow
       wschód: skorpion_z_fortu
     items:
-      - id: ostrzalka
-        name: "magiczna ostrzałka"
-        hint: "coś błyszczącego wśród gruzu"
-        description: "Niewielki, gładki kamień, chłodny w dotyku mimo żaru pustyni. Wyczuwasz w nim drzemiącą magię."
-        takeable: true
-        hidden_when: {flag: wie_o_ostrzalce}
       - id: zapasowy_miecz
         name: "zardzewiały miecz"
         hint: "stary miecz wbity w piasek między gruzami"
         description: "Stary, zardzewiały miecz — ktoś go tu kiedyś zostawił, albo zgubił w pośpiechu."
         takeable: true
-        hidden_when: {inventory: "zardzewiały miecz"}
-      - id: zapasowa_lopata
+        hidden_when: {flag: miecz_naostrzony, value: true}
+      - id: lopata
         name: "łopata"
         hint: "łopata oparta o połamany mur"
         description: "Solidna, choć nadgryziona rdzą łopata. Nadal się nada do kopania."
         takeable: true
-        hidden_when: {inventory: "łopata"}
     npcs: []
     atmosphere: "opuszczenie, wiatr świszczący między ruinami, ślady dawnej walki"
 
@@ -2848,6 +3094,106 @@ locations:
         takeable: true
     npcs: []
     atmosphere: "cisza po tragedii, wiatr poruszający porzuconym płótnem"
+
+  # ===== FINAŁ: PODZIEMNE JASKINIE =====
+
+  jaskinie_gorne:
+    name: "Galeria nad Salą Rytuału"
+    image_variants:
+      - file: "jaskinie_gorne"
+        base: true
+        condition: null
+        label: "Skalna galeria nad podziemną jaskinią"
+        prompt_extra: "wąska skalna galeria wisząca nad ogromną podziemną jaskinią, w dole krąg dogasających czerwonych pochodni, kamienny pulpit z księgą i kamienny golem, mroczna, ciężka atmosfera po rytuale"
+    description: |
+      Wąska skalna galeria wisi nad ogromną jaskinią. W dole, w kręgu
+      dogasających czerwonych pochodni, na kamiennym pulpicie leży otwarta
+      księga, a nad nią stoi kamienny golem. Królowa odeszła, jej kroki
+      zamarły w korytarzu. Wykute w skale schody prowadzą w dół — zejście.
+    exits:
+      zejście: jaskinie_dolna_sala
+    items: []
+    npcs: []
+    atmosphere: "ciężkie powietrze po rytuale, dogasające czerwone światło"
+
+  jaskinie_dolna_sala:
+    name: "Komnata Grymuaru"
+    image_variants:
+      - file: "jaskinie_dolna_sala"
+        base: true
+        condition: null
+        label: "Komnata z grymuarem i golemem"
+        prompt_extra: "podziemna okrągła komnata, kamienny pulpit z otwartym grymuarem, nad nim kamienny golem z runami na torsie, dogasające czerwone pochodnie, ciężka mroczna atmosfera"
+    description: |
+      Okrągła komnata wykuta w skale, w której unosi się jeszcze zapach
+      zaklęcia. Pośrodku kamienny pulpit z otwartym grymuarem. Przy nim,
+      nieruchomy jak głaz, stoi kamienny golem z runami na torsie.
+      Schody prowadzą w górę.
+    exits:
+      góra: jaskinie_gorne
+    items: []
+    npcs:
+      - id: golem
+        name: "Kamienny Golem"
+        description: |
+          Kamienny golem z runami na torsie, strażnik grymuaru. Nie mówi,
+          nie da się go przekupić ani przekonać — reaguje tylko na atak.
+          Zwykła stal nawet go nie rysuje. Magiczny miecz pokona go.
+        state: "strzeże"
+        unavailable_states:
+          pokonany: "Rozbite kamienne szczątki golema leżą wokół pustego pulpitu."
+        scripted_solutions:
+          - id: pokonanie_golema
+            requires: {inventory_all: ["magiczny miecz", "kamień teleportacji"]}
+            action_hint: "gracz musi wyraźnie zaatakować golema magicznym mieczem (lub po prostu mieczem) — samo stanie, rozmowa czy próba zabrania księgi nie wystarczy"
+            trigger: "gracz atakuje golema mieczem"
+            outcome: |
+              Golem rusza ciężko, kamienna pięść rozcina powietrze. Uchylasz
+              się, a magiczne ostrze, zamiast się odbić, wchodzi w kamień jak
+              w masło — runy na torsie golema gasną jedna po drugiej i cały
+              rozpada się w stos gruzu. Chwytasz grymuar z pulpitu. W tej samej
+              chwili za plecami podnosi się alarm, a po korytarzach niesie
+              się tupot butów. Do komnaty wpadają strażnicy. "Krystyna!" —
+              krzyczysz, ściskając kamień. Świat wiruje.
+
+              (Zdobywasz grymuar.)
+            flags: {golem_pokonany: true, golem_state: pokonany, gra_ukonczona: true}
+            inventory_add: ["grymuar"]
+            move_to: koniec_gry
+        no_match_messages:
+          - "Golem odpiera cios jedną kamienną ręką — zwykła stal nawet go nie rysuje."
+          - "Kamienny strażnik nie drgnie. Do księgi nie dojdziesz, dopóki on stoi."
+        creative_solutions_hint: |
+          To golem — nie da się go przekonać, przekupić ani ominąć. Pokona go
+          tylko atak magicznym mieczem.
+    atmosphere: "kamienny chłód, dogasające światło, zapach zaklęcia"
+
+  koniec_gry:
+    name: "Komnata Czarodziejki — Koniec"
+    image_variants:
+      - file: "koniec_gry"
+        base: true
+        condition: null
+        label: "Powrót do czarodziejki z grymuarem"
+        prompt_extra: "błękitnie oświetlona komnata czarodziejki, tajemnicza kobieta w szacie utkanej z piasku i gwiazd bierze od najemnika stary grymuar, na dywanie leży gruba kocica, spokojna, ale ciężka atmosfera"
+    description: |
+      Lądujesz na kamiennej posadzce komnaty czarodziejki, zdyszany,
+      z grymuarem pod pachą. Czarodziejka bierze księgę drżącymi dłońmi,
+      kartkuje ją i kiwa głową. "To wystarczy. Dziękuję." Gruba Krystyna
+      patrzy na ciebie z pogardliwym mruknięciem, jakby wcale cię tu nie
+      potrzebowała. "Resztę zostaw mnie" — mówi czarodziejka. "Królowa
+      pożałuje tego czaru, ale to już inna historia."
+
+      Jesteś tylko najemnikiem, który chciał przeżyć. Dziś udało się
+      przeżyć. Reszta — kiedyś.
+
+      KONIEC
+    final: true
+    final_text: "To już koniec tej opowieści. Grymuar jest w rękach czarodziejki, a reszta to historia na kiedy indziej."
+    exits: {}
+    items: []
+    npcs: []
+    atmosphere: "ulga, zmęczenie, błękitne światło"
 
   # ===== POZIOM 1: MIASTO =====
 

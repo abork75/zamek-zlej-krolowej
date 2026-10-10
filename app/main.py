@@ -405,6 +405,37 @@ def _match_deterministic_solution(player_input: str, npc: dict, state: dict) -> 
     return None
 
 
+_READ_VERBS = re.compile(
+    r"\b(przeczyta\w*|czyta\w*|odczyta\w*|rozwin\w*|rozwij\w*|zbadam|badam|obejrz\w*|ogladam|ogladaj\w*|"
+    r"sprawdz\w*|co\s+(jest\s+)?(napisane|na)|co\s+tam\s+jest|jaka\s+jest\s+tresc)\b"
+)
+
+
+def _try_read_item(player_input: str, state: dict, world: dict) -> str | None:
+    """readable_items (world.yaml): przedmiot z ekwipunku, który da się przeczytać. Gdy gracz
+    wyraźnie czyta/ogląda taki przedmiot, zwracamy stały tekst — bez classify_intent i bez
+    narratora (wcześniej Grok tylko zmyślał atmosferę i nigdy nie podawał treści)."""
+    readable = world.get("readable_items") or {}
+    if not readable:
+        return None
+    text = _normalize_pl(player_input)
+    if not _READ_VERBS.search(text):
+        return None
+    for item_name, cfg in readable.items():
+        if item_name not in state.get("inventory", []):
+            continue
+        words = cfg.get("match") or [item_name]
+        if not any(re.search(rf"\b{re.escape(_normalize_pl(w))}\w*", text) for w in words):
+            continue
+        body = (cfg.get("text") or "").strip()
+        seq_loc = cfg.get("sequence_from")
+        if seq_loc:
+            required = world["locations"].get(seq_loc, {}).get("move_sequence", {}).get("required", [])
+            body = body.replace("{sekwencja}", ", ".join(required))
+        return body
+    return None
+
+
 def _append_story_progress(outcome_text: str, progress_key: str | None, state: dict, world: dict) -> str:
     """Dopisuje do tekstu dynamiczną listę już poznanych/brakujących historii mieszkańców
     lasu, na podstawie realnego stanu ekwipunku — używane zarówno przez scripted_solutions
@@ -773,7 +804,7 @@ async def _execute_intent_step(
             if descriptions:
                 intent_context = (
                     f"gracz ogląda '{items[0].get('hint', item_id)}' — podaj TYLKO opis wyglądu przedmiotu.\n"
-                    f"ZAKAZ: nie pisz że gracz chwyta, podnosi, bierze, trzyma — przedmiot leży na miejscu.\n"
+                    f"ZAKAZ: nie pisz że gracz chwyta, podnosi, bierze, trzyma, wyciąga, zabiera, chowa ani sięga po przedmiot — leży na miejscu.\n"
                     f"Użyj DOKŁADNIE tych opisów:\n{descriptions}"
                 )
                 examined_flags = items[0].get("examine_sets_flag", {})
@@ -997,6 +1028,12 @@ async def _execute_intent_step(
                 # mimo jasnej instrukcji "nie opisuj że NPC ustąpił". no_match_messages (lista) daje
                 # pulę wariantów do losowania, żeby wiele nieudanych prób z rzędu nie brzmiało identycznie.
                 pool = npc.get("no_match_messages") or [npc["no_match_message"]]
+                # no_match_variants: pule komunikatów zależne od stanu gry (np. kowal PO naostrzeniu
+                # nie może mruczeć generycznie ani zmyślać — pierwszy pasujący wariant wygrywa)
+                for variant in npc.get("no_match_variants", []):
+                    if check_condition(variant.get("condition") or {}, state["flags"], state.get("inventory", [])):
+                        pool = variant["messages"]
+                        break
                 return random.choice(pool), None, None, {}, True, talk_npc_id, False, intent
             break
 
@@ -1013,6 +1050,7 @@ DIRECTION_ALIASES = {
     "wieża": "wieża",
     "góra": "góra", "gora": "góra", "up": "góra",
     "dół": "dół", "dol": "dół", "down": "dół",
+    "zejście": "zejście", "zejscie": "zejście", "zejdź": "zejście", "zejdz": "zejście",
     "przód": "przód", "przod": "przód", "dalej": "przód", "naprzód": "przód", "naprzod": "przód", "forward": "przód",
 }
 
@@ -1136,6 +1174,11 @@ def _try_move(player_input: str, state: dict, world: dict):
                 state["flags"].update(event["flags"])
             state["turn"] += 1
             event_narrative = _append_story_progress(event["narrative"].strip(), event.get("list_story_progress"), state, world)
+            # show_target_description: event przenosi gracza (target_location), a opis nowej lokacji
+            # nie jest częścią narracji eventu — dopisujemy go, żeby gracz od razu widział gdzie wylądował
+            if event.get("target_location") and event.get("show_target_description"):
+                target_loc = world["locations"].get(event["target_location"], {})
+                event_narrative += "\n\n" + resolve_description(target_loc, state["flags"], state.get("inventory", [])).strip()
             state["history"].append({"turn": state["turn"], "gm": event_narrative})
             save_state(state)
             return description.strip() + "\n\n" + event_narrative, state
@@ -1178,6 +1221,19 @@ async def chat(body: dict):
 
     location = world["locations"].get(state["current_location"], {})
     client = OpenAI(api_key=XAI_API_KEY, base_url="https://api.x.ai/v1")
+
+    # 1b. Lokacja końcowa (pole "final") — gra skończona, stały tekst, bez narratora i bez LLM
+    if location.get("final"):
+        final_text = (location.get("final_text") or "To już koniec tej opowieści.").strip()
+        return {"narrative": final_text, "state": enrich_state(state, world), "final": True}
+
+    # 1c. Czytanie przedmiotów (readable_items) — deterministycznie, bez klasyfikatora i narratora
+    read_text = _try_read_item(player_input, state, world)
+    if read_text:
+        state["turn"] += 1
+        state["history"].append({"turn": state["turn"], "gm": read_text})
+        save_state(state)
+        return {"narrative": read_text, "state": enrich_state(state, world)}
 
     # 2. Zakończenie gry — specjalne lokacje z polem "ending"
     if location.get("ending"):
@@ -1265,7 +1321,7 @@ async def chat(body: dict):
             temperature=0.8,
         )
         gm_response = response.choices[0].message.content.strip()
-        log.info(f"[GM RAW] {gm_response[:120]}")
+        log.info(f"[GM RAW] {gm_response[:600]}")
 
         # Grok zdecydował że to ruch — ta ścieżka (w przeciwieństwie do pojedynczych poleceń) nie
         # miała w ogóle obsługi sentinela MOVE:, więc leciał surowy tekst "MOVE: X" do gracza
@@ -1342,7 +1398,7 @@ async def chat(body: dict):
         temperature=0.8,
     )
     gm_response = response.choices[0].message.content.strip()
-    log.info(f"[GM RAW] {gm_response[:120]}")
+    log.info(f"[GM RAW] {gm_response[:600]}")
 
     # Grok zdecydował że to ruch — przekazujemy do deterministycznego mechanizmu
     if gm_response.startswith("MOVE:"):

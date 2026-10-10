@@ -85,6 +85,7 @@ function updateStatus(state) {
 const DIR_ICONS = {
   'północ': '↑', 'południe': '↓', 'wschód': '→', 'zachód': '←',
   'wejście': '↪', 'wyjście': '↩', 'podejdź bliżej': '↪',
+  'zejście': '⤓', 'góra': '⤒',
 };
 
 function updateExits(state) {

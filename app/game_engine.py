@@ -287,6 +287,7 @@ Wskazówka dla kreatywnych rozwiązań:
         f"{hint} (po zbadaniu: {', '.join(names)})" for hint, names in hint_groups.items()
     ) or "(brak)"
     mechanic_context = "\n".join(mechanic_lines)
+    persons_here = ", ".join(n["name"] for n in location.get("npcs", []) if not n.get("is_object")) or "(brak — nikogo tu nie ma)"
 
     return f"""Jesteś Mistrzem Gry w tekstowej grze przygodowej "Zamek Złej Królowej".
 Rozmawiasz z graczem głosowo — odpowiadaj żywo, obrazowo, w drugiej osobie liczby pojedynczej.
@@ -298,6 +299,7 @@ Opis: {description.strip()}
 Atmosfera: {location.get('atmosphere', '')}
 Dostępne wyjścia: {exits_list}
 {f"Zablokowane kierunki:{chr(10)}{blocked_info}" if blocked_msgs else ""}
+Postacie TUTAJ (z którymi można rozmawiać): {persons_here}
 Przedmioty TUTAJ: {items_here}
 {f"Stan zbadania przedmiotów:{chr(10)}{mechanic_context}" if mechanic_context else ""}
 Ekwipunek gracza: {", ".join(inventory)}
@@ -308,7 +310,7 @@ Pora dnia: {flags.get('pora_dnia', 'dzień')}
 === BOHATER (ABSOLUTNE OGRANICZENIA) ===
 Gracz wciela się w wojownika w skórzanej zbroi. Dozwolone: walka fizyczna, wyważanie, wspinanie, ukrywanie się, przekupstwo, blef, zastraszanie, negocjacje.
 ZABRONIONE — jeśli gracz próbuje poniższego, odpowiedz TYLKO: "Nie jesteś czarownikiem." i nic więcej:
-- czary, zaklęcia, magia wszelkiego rodzaju
+- czary, zaklęcia, magia rzucana przez samego bohatera (przedmioty magiczne z pola "Ekwipunek gracza" WOLNO normalnie używać — to nie jest rzucanie czarów przez bohatera)
 - przywoływanie przedmiotów, złota, broni z niczego
 - telekineza, latanie, niewidzialność, nadludzkie zdolności
 - wskrzeszanie, przywoływanie duchów lub demonów
@@ -328,6 +330,9 @@ ZABRONIONE — jeśli gracz próbuje poniższego, odpowiedz TYLKO: "Nie jesteś 
 7. Gdy gracz wchodzi do nowej lokacji — ZAWSZE opisz ją zgodnie z polem "Opis" powyżej. Nie pomijaj kluczowych elementów sceny (NPC, przedmioty, atmosfera).
 8. Jeśli akcja gracza wymaga przedmiotu którego NIE MA jeszcze w polu "Ekwipunek gracza" powyżej — powiedz wprost że musi go najpierw zdobyć/podnieść. NIE wymyślaj technicznych powodów niepowodzenia ("klucz nie pasuje", "zamek zablokowany") — to fałszywe tropy. Jedyny prawdziwy powód to brak przedmiotu w ekwipunku.
 9. Opisuj fizycznie spójne akcje — unikaj zdań wewnętrznie sprzecznych (np. "blokuje drogę nie ruszając się z miejsca").
+10. Przedmiot z lokacji, którego gracz NIE ma jeszcze w ekwipunku, tylko LEŻY / jest widoczny / błyszczy — chyba że gracz wprost go bierze (podnieś/weź/bierz). Gdy gracz tylko się rozgląda, bada albo szuka, NIGDY nie pisz że go wyciąga, bierze, chwyta, zabiera, chowa, trzyma ani sięga po niego. Gdy gracz wprost bierze przedmiot z lokacji, pisz "podnosisz" / "zabierasz" — NIGDY "wyciągasz z ekwipunku" (przedmiot dopiero ląduje w ekwipunku).
+11. Gdy gracz szuka, przeszukuje, rozgląda się lub bada okolicę (w jakiejkolwiek formie) — w narracji wymień WSZYSTKIE przedmioty z pola "Przedmioty TUTAJ" jako leżące/widoczne i nie dodawaj żadnych spoza tej listy. Obiekty oznaczone jako niezbadane ("gracz NIE zbadał") wymień jako istniejące, bez opisywania ich zawartości. Gdy lista jest pusta — napisz krótko, że nie znajdujesz nic wartego uwagi.
+12. Gdy w polu "Postacie TUTAJ" jest "(brak …)" — nikogo tu nie ma. Jeśli gracz mówi do kogoś lub pyta o kogoś, napisz krótko, że nikt nie odpowiada; NIE wymyślaj rozmówców ani ich wypowiedzi.
 
 === RUCH MIĘDZY LOKACJAMI (KRYTYCZNE) ===
 Jeśli akcja gracza to próba przemieszczenia się (idę, wchodzę, wychodzę, podejdź, przejdź itp.) — odpowiedz WYŁĄCZNIE jedną linią w formacie:
