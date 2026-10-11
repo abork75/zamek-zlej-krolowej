@@ -436,6 +436,33 @@ def _try_read_item(player_input: str, state: dict, world: dict) -> str | None:
     return None
 
 
+_INV_GAIN_NOTE = re.compile(r"\([^)]*(?:Otrzymujesz|Zdobyłeś)[^)]*\)", re.I)
+_INV_LOSS_NOTE = re.compile(r"\([^)]*(?:Straciłeś|Oddajesz|Zużyto|zużyt)[^)]*\)", re.I)
+
+
+def _inventory_notice(text: str, removed: list[str], added: list[str]) -> str:
+    """Dopisuje do tekstu scenariusza/eventu krótki komunikat o realnej zmianie ekwipunku — gracz
+    zawsze wie, że coś dostał lub stracił. Osobno dla zysku i straty: pomija tę część, którą tekst
+    ma już jako ręczny komunikat w nawiasie (np. "(Otrzymujesz kamień teleportacji.)"), żeby nie
+    dublować, ale dopisuje drugą (np. przedmioty zostawione za graczem przy inventory_keep)."""
+    parts = []
+    if removed and not _INV_LOSS_NOTE.search(text):
+        parts.append("Straciłeś: " + ", ".join(removed))
+    if added and not _INV_GAIN_NOTE.search(text):
+        parts.append("Zdobyłeś: " + ", ".join(added))
+    if not parts:
+        return text
+    return text + "\n\n(" + "; ".join(parts) + ".)"
+
+
+def _apply_inventory_keep(inventory: list[str], keep: list[str] | None) -> list[str]:
+    """inventory_keep (odwrotność inventory_clear): po przejściu bez powrotu zostają TYLKO
+    wymienione przedmioty — reszta zostaje za graczem. Brak pola = bez zmian."""
+    if not keep:
+        return inventory
+    return [i for i in inventory if i in keep]
+
+
 def _append_story_progress(outcome_text: str, progress_key: str | None, state: dict, world: dict) -> str:
     """Dopisuje do tekstu dynamiczną listę już poznanych/brakujących historii mieszkańców
     lasu, na podstawie realnego stanu ekwipunku — używane zarówno przez scripted_solutions
@@ -1013,11 +1040,18 @@ async def _execute_intent_step(
                         )
                     else:
                         outcome_text += f"\n\n(Rozwiązałeś już {count} z {threshold} potrzebnych zagadek.)"
+                inv_before = list(state["inventory"])
                 for item in matched_solution.get("inventory_remove", []):
                     state["inventory"] = [i for i in state["inventory"] if i != item]
                 for item in matched_solution.get("inventory_add", []):
                     if item not in state["inventory"]:
                         state["inventory"].append(item)
+                state["inventory"] = _apply_inventory_keep(state["inventory"], matched_solution.get("inventory_keep"))
+                outcome_text = _inventory_notice(
+                    outcome_text,
+                    [i for i in inv_before if i not in state["inventory"]],
+                    [i for i in state["inventory"] if i not in inv_before],
+                )
                 # move_to na scripted_solution nie działał przy wymuszonym, wczesnym zwrocie —
                 # ścieżka early_return nigdy nie docierała do kodu w main.py który go stosuje,
                 # więc np. wykopanie tunelu (podkop_start) ustawiało flagę ale nie przenosiło gracza
@@ -1182,6 +1216,7 @@ def _try_move(player_input: str, state: dict, world: dict):
         if event:
             if event.get("target_location"):
                 state["current_location"] = event["target_location"]
+            ev_inv_before = list(state["inventory"])
             if event.get("inventory_clear"):
                 state["inventory"] = []
             for item in event.get("inventory_remove", []):
@@ -1189,10 +1224,17 @@ def _try_move(player_input: str, state: dict, world: dict):
             for item in event.get("inventory_add", []):
                 if item not in state["inventory"]:
                     state["inventory"].append(item)
+            state["inventory"] = _apply_inventory_keep(state["inventory"], event.get("inventory_keep"))
             if event.get("flags"):
                 state["flags"].update(event["flags"])
             state["turn"] += 1
             event_narrative = _append_story_progress(event["narrative"].strip(), event.get("list_story_progress"), state, world)
+            if not event.get("inventory_clear"):
+                event_narrative = _inventory_notice(
+                    event_narrative,
+                    [i for i in ev_inv_before if i not in state["inventory"]],
+                    [i for i in state["inventory"] if i not in ev_inv_before],
+                )
             # show_target_description: event przenosi gracza (target_location), a opis nowej lokacji
             # nie jest częścią narracji eventu — dopisujemy go, żeby gracz od razu widział gdzie wylądował
             if event.get("target_location") and event.get("show_target_description"):
@@ -1380,6 +1422,7 @@ async def chat(body: dict):
                 for item in ss_obj.get("inventory_add", []):
                     if item not in updated_state["inventory"]:
                         updated_state["inventory"].append(item)
+                updated_state["inventory"] = _apply_inventory_keep(updated_state["inventory"], ss_obj.get("inventory_keep"))
                 if ss_obj.get("move_to") and ss_obj["move_to"] in world["locations"]:
                     updated_state["current_location"] = ss_obj["move_to"]
                     new_loc = world["locations"][ss_obj["move_to"]]
@@ -1441,6 +1484,7 @@ async def chat(body: dict):
             for item in scripted_solution_obj.get("inventory_add", []):
                 if item not in updated_state["inventory"]:
                     updated_state["inventory"].append(item)
+            updated_state["inventory"] = _apply_inventory_keep(updated_state["inventory"], scripted_solution_obj.get("inventory_keep"))
     elif authoritative_flags:
         updated_state["flags"].update(authoritative_flags)
     apply_city_arrest_mechanic(updated_state, world)

@@ -246,8 +246,8 @@ events:
       specjalnie." Oddaje naostrzony, lśniący miecz. "Teraz jest
       gotowy na to, co przed tobą."
 
-      (Magiczna ostrzałka została zużyta. Zardzewiały miecz zastępuje
-      teraz magiczny miecz.)
+      (Zużyto: magiczna ostrzałka, zardzewiały miecz. Otrzymujesz: magiczny
+      miecz.)
     flags: {miecz_naostrzony: true}
     inventory_remove: ["magiczna ostrzałka", "zardzewiały miecz"]
     inventory_add: ["magiczny miecz"]
@@ -263,6 +263,15 @@ events:
       magicznej ostrzałki. A moja gdzieś mi się zapodziała, szukam
       jej od dawna." Oddaje ci miecz z powrotem.
     flags: {wie_o_ostrzalce: true}
+  - id: przejscie_las2
+    condition:
+      flags_any_false: {las2_wejscie: true}
+    trigger_locations: [las2]
+    narrative: |
+      Za tobą, w ciemnym tunelu, zostaje wszystko, co do niczego już się
+      nie przyda — dalsza droga wiedzie bez tych rupieci.
+    flags: {las2_wejscie: true}
+    inventory_keep: ["zardzewiały miecz", "miecz i zbroja", "mieszek ze złotem", "próbka substancji"]
   - id: czarodziejka_kamien
     condition:
       flag: miecz_naostrzony
@@ -304,6 +313,7 @@ events:
       Księga zostaje na kamiennym pulpicie, pod okiem strażnika.
     flags: {kamien_dany: true}
     inventory_add: ["kamień teleportacji"]
+    inventory_keep: ["magiczny miecz", "kamień teleportacji", "miecz i zbroja", "mieszek ze złotem"]
     target_location: jaskinie_gorne
     show_target_description: true
 
@@ -1376,6 +1386,7 @@ locations:
               Wkładasz klucz do kłódki i przekręcasz — mechanizm ustępuje z głośnym
               szczękiem. Drzwi celi otwierają się na oścież.
             flags: {cela_zamknieta_stan: otwarta}
+            inventory_remove: ["klucz do celi"]
             move_to: cela_zamknieta
           - id: rozmowa_przez_kraty
             allow_talk: true
@@ -1583,6 +1594,7 @@ locations:
               i cegły sypią się pod ciosami, aż w końcu światło dnia przebija
               się przez dziurę. Świeże powietrze wpada do tunelu.
             flags: {mur_rozbity: true}
+            inventory_remove: ["łom", "kilof"]
           - id: rozbij_kilofem
             requires: {inventory: "kilof"}
             action_hint: "gracz musi wyraźnie wskazać użycie kilofa — samo 'rozbij mur/idź dalej' bez wskazania kilofem nie wystarczy"
@@ -1593,6 +1605,7 @@ locations:
               światło dnia przebija się przez dziurę. Świeże powietrze
               wpada do tunelu.
             flags: {mur_rozbity: true}
+            inventory_remove: ["łom", "kilof"]
         no_match_messages:
           - "Mur nawet nie drgnął. Zamurowane wyjście wciąż blokuje drogę."
           - "Cokolwiek właśnie zrobiłeś, mur pozostaje nienaruszony."
@@ -2205,6 +2218,7 @@ locations:
               pod stopami znika w wirze światła i piasku. Świat rozmywa się
               i po chwili otwierasz oczy gdzie indziej.
             flags: {ivan_teleportuje: true}
+            inventory_keep: ["zardzewiały miecz", "miecz i zbroja", "mieszek ze złotem", "próbka substancji"]
             move_to: pustynia
         no_match_messages:
           - "Powietrze lekko drży, ale nic więcej się nie dzieje."
@@ -2758,8 +2772,8 @@ locations:
               specjalnie." Oddaje naostrzony, lśniący miecz. "Teraz jest
               gotowy na to, co przed tobą."
 
-              (Magiczna ostrzałka została zużyta. Zardzewiały miecz
-              zastępuje teraz magiczny miecz.)
+              (Zużyto: magiczna ostrzałka, zardzewiały miecz. Otrzymujesz:
+              magiczny miecz.)
             flags: {miecz_naostrzony: true}
             inventory_remove: ["magiczna ostrzałka", "zardzewiały miecz"]
             inventory_add: ["magiczny miecz"]
@@ -3347,6 +3361,7 @@ locations:
               Wkładasz klucz do zamka i przekręcasz. Drzwi otwierają się z cichym skrzypnięciem.
               Możesz wyjść.
             flags: {drzwi_pokoj_state: otwarte}
+            inventory_remove: ["klucz do pokoju"]
     atmosphere: "duszny poranek, smród taniego piwa i słomy, głowa boli po wczorajszym"
 
   karczma:
