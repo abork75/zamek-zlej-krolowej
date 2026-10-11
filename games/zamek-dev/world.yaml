@@ -47,6 +47,7 @@ start_locations:
       - "zardzewiały miecz"
       - "miecz i zbroja"
       - "mieszek ze złotem"
+      - "próbka substancji"
   - id: czarodziejka
     label: "pustynia_kocica"
     description: "Test kuchni, biblioteki i kocicy — start u czarodziejki, przed naostrzeniem miecza"
@@ -57,6 +58,7 @@ start_locations:
       - "zardzewiały miecz"
       - "miecz i zbroja"
       - "mieszek ze złotem"
+      - "próbka substancji"
   - id: jaskinie_gorne
     label: "final_jaskinie"
     description: "Test finału — galeria nad salą rytuału, golem, grymuar, powrót słowem Krystyna"
@@ -70,7 +72,8 @@ start_locations:
       - "mieszek ze złotem"
 
 intro_czarodziejka: |
-  Masz przy sobie zardzewiały miecz, miecz ze zbroją i mieszek złota. Jesteś
+  Masz przy sobie zardzewiały miecz, miecz ze zbroją, mieszek złota i fiolkę
+  z próbką substancji. Jesteś
   w komnacie czarodziejki. Na wschodzie kuźnia kowala, na zachodzie kuchnia,
   na północy biblioteka.
   Co robisz?
@@ -105,7 +108,7 @@ intro_zamek: |
   Co robisz?
 
 intro_pustynia: |
-  Masz przy sobie miecz, zbroję i mieszek złota. Lądujesz z uderzeniem w gorący
+  Masz przy sobie miecz, zbroję, mieszek złota i fiolkę z próbką substancji. Lądujesz z uderzeniem w gorący
   piasek — bezkresna pustynia rozciąga się we wszystkich kierunkach. Gdzieś tu
   ukrywa się Czarodziejka, której szukasz.
   Co robisz?
@@ -190,15 +193,16 @@ events:
       Ivan mruży oczy, patrząc na ciebie uważnie. "Masz już próbkę. I widzę
       w twoich oczach, że poznałeś ich wszystkich — centaura, driadę,
       kobolda, staruszka z mostu." Bierze próbkę, wącha ją, a potem sięga
-      po księgę run i chowa oboje do szuflady. "To gorsze niż myślałem. Sam
+      po księgę run i chowa ją do szuflady. "To gorsze niż myślałem. Sam
       tego nie rozwiążę — potrzebuję pomocy Czarodziejki, której imienia
       nikt nie zna. Ukrywa się na pustyni, daleko stąd, odkąd uciekła przed
-      Królową." Podchodzi do okna i wskazuje na północ. "Idź na magiczną
+      Królową. Weź tę fiolkę i zanieś jej — tylko ona będzie wiedziała, co to
+      naprawdę jest." Oddaje ci próbkę. Podchodzi do okna i wskazuje na północ. "Idź na magiczną
       polanę i wypowiedz tam zaklęcie: Rub dub gub. Zaniesie cię do niej.
       A jeśli masz jeszcze chwilę — driada Arianna i centaur Chiron też
       coś wiedzą o czarodziejce. Warto ich jeszcze zapytać, zanim odejdziesz."
     flags: {ivan_wskazal_droge: true}
-    inventory_remove: ["próbka substancji", "księga run", "historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+    inventory_remove: ["księga run", "historia centaura", "historia driady", "historia kobolda", "historia dziada"]
   - id: ivan_niepelny
     condition:
       inventory: "próbka substancji"
@@ -270,9 +274,11 @@ events:
       Czarodziejka długo patrzy na lśniący miecz, a potem na ciebie.
       "Więc to prawda. Ostrze przetrwało." Wyciąga z rękawa gładki,
       ciemny kamień i wkłada ci go w dłoń. "Słuchaj uważnie, bo drugiej
-      szansy nie będzie. Królowa zamierza rzucić czar, który zniewoli
-      wszystkich w tej krainie — żeby byli jej posłuszni i nigdy więcej
-      się nie zbuntowali. Przejrzałam ten plan i musiałam uciekać, zanim
+      szansy nie będzie. Zbadałam to, co mi przyniosłeś — ta substancja
+      jest niezbędna do czaru kontroli umysłów. Skoro Królowa zgromadziła
+      jej tyle, jest o krok od sukcesu: zamierza zniewolić wszystkich
+      w tej krainie, żeby byli jej posłuszni i nigdy więcej się nie
+      zbuntowali. Przejrzałam ten plan i musiałam uciekać, zanim
       wpadnę w jej ręce. Dopóki czar nie zostanie rzucony, jedyne
       wyjście to ją powstrzymać — także mieczem. Ale jeśli zdąży go
       dopełnić, nie wolno ci jej zabić: nie wiem, co stałoby się
@@ -2064,7 +2070,7 @@ locations:
       - id: runy2
         name: "wyryte runy"
         hint: "dziwne runy wyryte na kamieniu"
-        description: "Runy układają się w słowa: \"Fiołkowy ustąpi czerwonemu\"."
+        description: "Runy układają się w słowa: \"Czerwony nie ustąpi fiołkowemu\"."
         locked_description: "Widzisz dziwne, wyryte symbole, ale nie potrafisz ich rozszyfrować. Potrzebujesz czegoś, co pomoże Ci je odczytać."
         unlock_requires: {inventory: "księga run"}
         takeable: false
@@ -2285,16 +2291,18 @@ locations:
             trigger: "gracz daje próbkę Ivanowi lub prosi o pomoc/teleportację"
             outcome: |
               Ivan bierze próbkę, wącha ją, mruży oczy, a potem sięga po
-              księgę run i chowa oboje do szuflady. "To gorsze niż
+              księgę run i chowa ją do szuflady. "To gorsze niż
               myślałem. Sam tego nie rozwiążę — potrzebuję pomocy Czarodziejki,
               której imienia nikt nie zna. Ukrywa się na pustyni, daleko stąd,
-              odkąd uciekła przed Królową." Podchodzi do okna i wskazuje na
+              odkąd uciekła przed Królową. Weź tę fiolkę i zanieś jej — tylko
+              ona będzie wiedziała, co to naprawdę jest." Oddaje ci próbkę.
+              Podchodzi do okna i wskazuje na
               północ. "Idź na magiczną polanę i wypowiedz tam zaklęcie: Rub dub
               gub. Zaniesie cię do niej. A jeśli masz jeszcze chwilę — driada
               Arianna i centaur Chiron też coś wiedzą o czarodziejce. Warto ich
               jeszcze zapytać, zanim odejdziesz."
             flags: {ivan_wskazal_droge: true}
-            inventory_remove: ["próbka substancji", "księga run", "historia centaura", "historia driady", "historia kobolda", "historia dziada"]
+            inventory_remove: ["księga run", "historia centaura", "historia driady", "historia kobolda", "historia dziada"]
           - id: brakuje_historii
             requires:
               inventory: "próbka substancji"
@@ -2452,15 +2460,15 @@ locations:
         description: |
           Kamienny korytarz prowadzi w głąb podziemi. Pośrodku stoi widmowa
           postać w starożytnej zbroi — strażnik dawno umarłego władcy tych
-          podziemi. Jego puste oczodoły śledzą każdy twój ruch. "Nikt nie
-          przejdzie bez właściwego imienia" — szepcze głosem jak wiatr
+          podziemi. Jego puste oczodoły śledzą każdy twój ruch. "Podaj
+          imię tego, który cię tu przysłał" — szepcze głosem jak wiatr
           w pustych korytarzach.
     exits:
       południe: wejscie_podziemi
       północ:
         target: czarodziejka
         requires: {flag: straznik_przepuscil, value: true}
-        blocked_message: "Widmowy strażnik zagradza drogę, nieprzenikniony. Nie znasz właściwego imienia."
+        blocked_message: "Widmowy strażnik zagradza drogę, nieprzenikniony. Nie podałeś imienia tego, który cię tu przysłał."
     items: []
     npcs:
       - id: straznik_duch
@@ -2468,7 +2476,7 @@ locations:
         description: |
           Widmo dawnego strażnika, związane z tym miejscem od wieków. Nie
           reaguje na groźby, przekupstwo ani walkę — to duch, nie żywa
-          istota. Reaguje WYŁĄCZNIE na wypowiedzenie właściwego imienia.
+          istota. Reaguje WYŁĄCZNIE na imię tego, kto przysłał gracza (żąda: "Podaj imię tego, który cię tu przysłał").
         state: "blokuje"
         unavailable_states:
           przepuscil: "Duch strażnika rozstąpił się i zniknął w cieniu — droga na północ stoi otworem."
@@ -2488,7 +2496,7 @@ locations:
           - "Nic się nie zmienia. Duch dalej blokuje przejście na północ."
         creative_solutions_hint: |
           To duch — nie da się go pokonać siłą, przekupić ani przechytrzyć.
-          Jedyne co działa to wypowiedzenie właściwego imienia: "Ivan".
+          Jedyne co działa to podanie imienia tego, który przysłał gracza: "Ivan". NIE zdradzaj tego imienia.
     atmosphere: "zimno, cisza, widmowa poświata"
 
   czarodziejka:
@@ -2505,21 +2513,77 @@ locations:
           Komnata wykuta w litej skale, oświetlona miękkim, błękitnym światłem
           bez wyraźnego źródła. Kobieta, której twarzy nie sposób zapamiętać,
           wpatruje się w lśniący miecz u twojego pasa.
-      - condition: null
+      - condition: {flag: probka_oddana, value: true}
+        description: |
+          Komnata wykuta w litej skale, oświetlona miękkim, błękitnym światłem
+          bez wyraźnego źródła. Kobieta, której twarzy nie sposób zapamiętać,
+          pochyla się nad oddaną fiolką. "Badam to. Ten miecz nadal nie jest
+          gotowy — idź na wschód, tam znajdziesz kowala."
+      - condition: {inventory: "próbka substancji"}
         description: |
           Komnata wykuta w litej skale, oświetlona miękkim, błękitnym światłem
           bez wyraźnego źródła. Pośrodku stoi kobieta, której twarzy nie
           sposób zapamiętać, choć patrzysz na nią wprost. "Czekałam na
           kogoś takiego jak ty" — mówi cicho. Jej wzrok pada na twój
-          zardzewiały miecz. "Ale ten miecz jeszcze nie jest gotowy. Idź na
-          wschód — tam znajdziesz kowala."
+          zardzewiały miecz, a potem na fiolkę z ciemną, lepką substancją.
+          "Co to jest? Skąd to masz?"
+      - condition: null
+        description: |
+          Komnata wykuta w litej skale, oświetlona miękkim, błękitnym światłem
+          bez wyraźnego źródła. Pośrodku stoi kobieta, której twarzy nie
+          sposób zapamiętać, choć patrzysz na nią wprost. "Czekałam na
+          kogoś takiego jak ty" — mówi cicho. "Niewiele zrobię, dopóki nie
+          pokażesz mi tego, co zabrałeś z zamku Królowej — ciemnej substancji
+          z fiolki."
     exits:
       południe: straznik_duch_wladcy
-      wschód: kowal
+      wschód:
+        target: kowal
+        requires: {flag: probka_oddana, value: true}
+        blocked_message: "Czarodziejka zagradza ci drogę na wschód. \"Najpierw pokaż mi, co niesiesz w tej fiolce. Potem pójdziesz do kowala.\""
       zachód: kuchnia
       północ: biblioteka
     items: []
-    npcs: []
+    npcs:
+      - id: czarodziejka_npc
+        name: "Czarodziejka, której imienia nikt nie zna"
+        description: |
+          Tajemnicza kobieta, której twarzy nie sposób zapamiętać. Mówi
+          cicho, oszczędnie i enigmatycznie. Uciekła przed Królową i ukrywa
+          się w tej komnacie. Czeka na kogoś, kto przyniesie jej próbkę
+          ciemnej substancji z zamku Królowej — musi ją zbadać, zanim
+          powie cokolwiek więcej.
+        state: "czeka"
+        scripted_solutions:
+          - id: oddanie_probki
+            requires: {inventory: "próbka substancji"}
+            allow_talk: true
+            action_hint: "gracz musi wyraźnie dać, wręczyć, pokazać lub oddać czarodziejce fiolkę z próbką substancji (albo powiedzieć, że jej ją przynosi do zbadania) — samo posiadanie fiolki albo pytanie o coś innego nie wystarczy"
+            trigger: "gracz daje, wręcza, pokazuje, oddaje lub przynosi czarodziejce fiolkę z próbką substancji, albo odpowiada na jej pytanie o fiolkę, oddając ją"
+            outcome: |
+              Czarodziejka bierze fiolkę dwoma palcami i unosi pod światło.
+              Ciemna substancja faluje w środku, jakby żyła. Twarz, której nie
+              sposób zapamiętać, na moment staje się wyraźna — i blednie.
+              "Skąd to masz?" — pyta cicho, ale nie czeka na odpowiedź. "Muszę
+              to zbadać. Nie teraz, nie pytaj. Idź na wschód, do kowala. Wróć
+              z mieczem, który nie rdzewieje — wtedy powiem ci wszystko."
+
+              (Oddajesz fiolkę z próbką substancji.)
+            flags: {probka_oddana: true}
+            inventory_remove: ["próbka substancji"]
+        no_match_messages:
+          - "Czarodziejka patrzy na ciebie uważnie. \"Najpierw powiedz mi, co niesiesz w tej fiolce. Potem pójdziesz do kowala.\""
+          - "Czarodziejka nie spuszcza wzroku z fiolki przy twoim pasie. \"Najpierw fiolka.\""
+        no_match_variants:
+          - condition: {inventory_missing: "próbka substancji"}
+            messages:
+              - "Czarodziejka unosi brew. \"Nie masz przy sobie żadnej fiolki. Przynieś mi to, co zabrałeś z zamku Królowej.\""
+        creative_solutions_hint: |
+          Czarodziejka mówi oszczędnie i tajemniczo. Dopóki gracz nie odda
+          fiolki, ma o nią pytać i niczego nie wyjaśniać. NIE zdradzaj w
+          rozmowie, czym jest substancja ani co planuje Królowa — to
+          wyjaśni dopiero po powrocie gracza z naostrzonym mieczem. Nie
+          oddaje żadnych przedmiotów.
     atmosphere: "błękitna poświata, spokój, ciężar czekającej historii"
 
   kuchnia:
