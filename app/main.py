@@ -924,6 +924,11 @@ async def _execute_intent_step(
     # (i jej twardym blokom no_match_message) zamiast pozwolić Grokowi zmyślić całą scenę
     if not crowd_talk and (intent not in ("TAKE", "EXAMINE") or not item_id or not intent_context):
         for npc in location.get("npcs", []):
+            # ogólne rozglądanie/przeszukiwanie ("co widzę w pokoju?", "przeszukaj pokój") nie jest
+            # próbą użycia obiektu-NPC (drzwi, beczka) — bez tego twardy no_match_message drzwi
+            # połykał KAŻDĄ akcję w pokoju startowym; ruch/użycie/inne akcje nadal go dotykają
+            if npc.get("is_object") and intent == "EXAMINE" and not item_id and npc_id != npc["id"]:
+                continue
             # scripted_solution z pustymi flags (nic nie zmienia stanu — np. powtórzenie
             # historii) nigdy nie "kończy się" jak zwykłe rozwiązania, więc liczy się jako
             # aktywne dopóki jego requires są spełnione, niezależnie od reszty NPC
@@ -1030,10 +1035,24 @@ async def _execute_intent_step(
                 pool = npc.get("no_match_messages") or [npc["no_match_message"]]
                 # no_match_variants: pule komunikatów zależne od stanu gry (np. kowal PO naostrzeniu
                 # nie może mruczeć generycznie ani zmyślać — pierwszy pasujący wariant wygrywa)
+                variant_hit = False
                 for variant in npc.get("no_match_variants", []):
                     if check_condition(variant.get("condition") or {}, state["flags"], state.get("inventory", [])):
                         pool = variant["messages"]
+                        variant_hit = True
                         break
+                # ROZMOWA z NPC (TALK) bez pasującego scenariusza: zamiast stałego "ignoruje cię"
+                # odpowiada Grok głosem NPC (sam rozumie pytanie), a świat się nie zmienia — kod i tak
+                # chroni stan. Twarda odpowiedź zostaje dla akcji (OTHER/USE...), obiektów (drzwi),
+                # aktywnego wariantu stanu oraz NPC z `hard_talk_block: true` (wycofanie per NPC).
+                if (intent == "TALK" and talk_npc_id == npc["id"] and not npc.get("is_object")
+                        and not variant_hit and not npc.get("hard_talk_block")):
+                    intent_context += (
+                        "\nW tej rozmowie nic się w świecie nie zmienia: NPC nie zmienia decyzji, nie ustępuje, "
+                        "nie przepuszcza i nie oddaje żadnych przedmiotów — odpowiada wyłącznie słowami, "
+                        "trzymając się swojej roli i aktualnego stanu."
+                    )
+                    break
                 return random.choice(pool), None, None, {}, True, talk_npc_id, False, intent
             break
 

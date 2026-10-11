@@ -1577,6 +1577,16 @@ locations:
               i cegły sypią się pod ciosami, aż w końcu światło dnia przebija
               się przez dziurę. Świeże powietrze wpada do tunelu.
             flags: {mur_rozbity: true}
+          - id: rozbij_kilofem
+            requires: {inventory: "kilof"}
+            action_hint: "gracz musi wyraźnie wskazać użycie kilofa — samo 'rozbij mur/idź dalej' bez wskazania kilofem nie wystarczy"
+            trigger: "gracz aktywnie używa kilofa na murze — rozbija, wali, uderza, kuje kilofem w mur"
+            outcome: |
+              Zamachujesz się kilofem i raz po raz wbijasz go w zamurowany
+              fragment. Glina i cegły sypią się pod ciosami, aż w końcu
+              światło dnia przebija się przez dziurę. Świeże powietrze
+              wpada do tunelu.
+            flags: {mur_rozbity: true}
         no_match_messages:
           - "Mur nawet nie drgnął. Zamurowane wyjście wciąż blokuje drogę."
           - "Cokolwiek właśnie zrobiłeś, mur pozostaje nienaruszony."
@@ -3251,6 +3261,10 @@ locations:
         name: "zamknięte drzwi"
         is_object: true
         no_match_message: "Szarpiesz za klamkę, ale drzwi są solidnie zamknięte na klucz. Musisz wyraźnie użyć klucza, żeby je otworzyć."
+        no_match_variants:
+          - condition: {inventory_missing: "klucz do pokoju"}
+            messages:
+              - "Szarpiesz za klamkę, ale drzwi są solidnie zamknięte na klucz. Klucza nie masz jeszcze przy sobie — może leży gdzieś w pokoju?"
         description: |
           Solidne drewniane drzwi z żelaznym zamkiem. Otwierają się kluczem.
           Nie próbuj ich wyważać — karczmarz ma cię na oku.

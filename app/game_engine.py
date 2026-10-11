@@ -241,6 +241,12 @@ def build_gm_prompt(player_input: str, state: dict, world: dict, intent_context:
                 f"  - TRIGGER: {s['trigger']}\n    OUTCOME (użyj DOSŁOWNIE jeśli trigger pasuje, nie parafrazuj): {s['outcome'].strip()}\n    [flags_update: {s.get('flags', {})}]"
                 for s in npc.get("scripted_solutions", [])
             )
+        elif npc.get("unavailable_states", {}).get(npc_current_state):
+            # NPC już rozwiązany/odsunięty (np. niedźwiedź po walce) — szablon "NADAL BLOKUJE DROGĘ"
+            # kazał Grokowi pisać, że zwierzę wciąż stoi na ścieżce mimo realnego stanu w grze
+            scripted = (f"(NPC jest już NIEAKTYWNY: {npc['unavailable_states'][npc_current_state]} "
+                        "NIE blokuje już drogi i NIE stoi na ścieżce — NIE opisuj go jako obecnego, groźnego ani "
+                        "zagradzającego przejście. Wzmianka o jego losie ma być zgodna z powyższym opisem stanu.)")
         else:
             scripted = ("(WAŻNE: system gry sprawdził akcję gracza — żaden trigger nie pasował. "
                         "NPC pozostaje w aktualnym stanie i NADAL BLOKUJE DROGĘ. "
